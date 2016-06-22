@@ -1,0 +1,4 @@
+from numpy import sin, cos, pi
+from numpy.random import randn
+#from glitter import VertexArray, State, get_default_program
+print 'hi'

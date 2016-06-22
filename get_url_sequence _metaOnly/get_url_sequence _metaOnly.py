@@ -35,7 +35,7 @@ for link in pano.AnnotationLinks:
 
 	
 
-for i in xrange(1,30):
+for i in xrange(1,100):
 	print i
 	pano_for_mat = panoDict['street' + str(i)]
 
