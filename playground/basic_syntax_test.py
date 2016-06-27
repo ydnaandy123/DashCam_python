@@ -42,3 +42,9 @@ x = 10.123;
 printinfo( x );
 print (x);
 printinfo( 70, 60, 50 )
+
+print 1, 2, 3
+
+yoo = [1, 2, 3]
+yoo.append(4);
+print yoo

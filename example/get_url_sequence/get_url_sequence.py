@@ -1,5 +1,7 @@
 #!/usr/bin/python
+import sys
 
+sys.path.append('/usr/local/lib/python2.7/site-packages')
 import streetview_my
 import numpy as np
 import cv2
