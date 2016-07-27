@@ -6,8 +6,9 @@ import cv2
 import scipy.io as sio
 import json
 
-
-start_panoId = 'OdH7fZyrCUDrpEx4CvLLYA'
+fileID = '000731'
+start_panoId = 'y5KKray3BgfMR8jZohGMGA'
+requireNum = 30
 panoSet = set()
 panoList = []
 panoDict = {}
@@ -35,7 +36,7 @@ for link in pano.AnnotationLinks:
 
 	
 
-for i in xrange(1,100):
+for i in xrange(1,requireNum):
 	print i
 	pano_for_mat = panoDict['street' + str(i)]
 
@@ -60,5 +61,5 @@ panoMeta = {}
 panoMeta['len'] = len(panoDict.keys())	
 panoMeta['data'] = panoDict		
 
-sio.savemat('streetview_set_onlyMeta.mat', panoMeta)
+sio.savemat('streetview_set_onlyMeta_' + fileID + '.mat', panoMeta)
 

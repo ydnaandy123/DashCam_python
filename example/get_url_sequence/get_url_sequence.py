@@ -8,8 +8,9 @@ import cv2
 import scipy.io as sio
 import json
 
-
-start_panoId = 'OdH7fZyrCUDrpEx4CvLLYA'
+fileID = '000994'
+start_panoId = 'GqB2wt15OLGdVzm0BIC8SQ'
+requireNum = 30
 panoSet = set()
 panoList = []
 panoDict = {}
@@ -18,8 +19,8 @@ cur = 0
 panoList.append(start_panoId)
 panoSet.add(start_panoId)
 pano = streetview_my.GetPanoramaMetadata(start_panoId)
-pano_for_mat = {'Lat':pano.Lat, 'Lon':pano.Lon, 'rawDepth':pano.rawDepth, 'AnnotationLinks':pano.AnnotationLinks, 'DepthMapIndices':pano.DepthMapIndices, 'DepthMapPlanes':pano.DepthMapPlanes, 'DepthHeader':pano.DepthHeader}	
-#pano_for_mat = {'Lat':pano.Lat, 'Lon':pano.Lon, 'panoId':pano.PanoId, 'AnnotationLinks':pano.AnnotationLinks}
+pano_for_mat = {'Lat':pano.Lat, 'Lon':pano.Lon, 'panoId':pano.PanoId, 'AnnotationLinks':pano.AnnotationLinks, 'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg,'rawDepth':pano.rawDepth, 'DepthMapIndices':pano.DepthMapIndices, 'DepthMapPlanes':pano.DepthMapPlanes, 'DepthHeader':pano.DepthHeader}	
+#pano_for_mat = {'Lat':pano.Lat, 'Lon':pano.Lon, 'panoId':pano.PanoId, 'AnnotationLinks':pano.AnnotationLinks, 'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg}
 panoDict['street' + str(cur)] = pano_for_mat
 cur += 1
 
@@ -30,14 +31,14 @@ for link in pano.AnnotationLinks:
 	panoList.append(panoId)
 	panoSet.add(panoId)
 	pano = streetview_my.GetPanoramaMetadata(panoId)
-	pano_for_mat = {'Lat':pano.Lat, 'Lon':pano.Lon, 'rawDepth':pano.rawDepth, 'AnnotationLinks':pano.AnnotationLinks, 'DepthMapIndices':pano.DepthMapIndices, 'DepthMapPlanes':pano.DepthMapPlanes, 'DepthHeader':pano.DepthHeader}	
-	#pano_for_mat = {'Lat':pano.Lat, 'Lon':pano.Lon, 'panoId':pano.PanoId, 'AnnotationLinks':pano.AnnotationLinks}
+	pano_for_mat = {'Lat':pano.Lat, 'Lon':pano.Lon, 'panoId':pano.PanoId, 'AnnotationLinks':pano.AnnotationLinks, 'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg, 'rawDepth':pano.rawDepth, 'DepthMapIndices':pano.DepthMapIndices, 'DepthMapPlanes':pano.DepthMapPlanes, 'DepthHeader':pano.DepthHeader}	
+	#pano_for_mat = {'Lat':pano.Lat, 'Lon':pano.Lon, 'panoId':pano.PanoId, 'AnnotationLinks':pano.AnnotationLinks, 'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg}
 	panoDict['street' + str(cur)] = pano_for_mat
 	cur += 1
 
 	
 
-for i in xrange(1,30):
+for i in xrange(1,requireNum):
 	print i
 	pano_for_mat = panoDict['street' + str(i)]
 
@@ -48,8 +49,8 @@ for i in xrange(1,30):
 		panoList.append(panoId)
 		panoSet.add(panoId)
 		pano = streetview_my.GetPanoramaMetadata(panoId)
-		pano_for_mat = {'Lat':pano.Lat, 'Lon':pano.Lon, 'rawDepth':pano.rawDepth, 'AnnotationLinks':pano.AnnotationLinks, 'DepthMapIndices':pano.DepthMapIndices, 'DepthMapPlanes':pano.DepthMapPlanes, 'DepthHeader':pano.DepthHeader}	
-		#pano_for_mat = {'Lat':pano.Lat, 'Lon':pano.Lon, 'panoId':pano.PanoId, 'AnnotationLinks':pano.AnnotationLinks}	
+		pano_for_mat = {'Lat':pano.Lat, 'Lon':pano.Lon, 'panoId':pano.PanoId, 'AnnotationLinks':pano.AnnotationLinks, 'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg, 'rawDepth':pano.rawDepth, 'DepthMapIndices':pano.DepthMapIndices, 'DepthMapPlanes':pano.DepthMapPlanes, 'DepthHeader':pano.DepthHeader}	
+		#pano_for_mat = {'Lat':pano.Lat, 'Lon':pano.Lon, 'panoId':pano.PanoId, 'AnnotationLinks':pano.AnnotationLinks, 'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg}	
 		panoDict['street' + str(cur)] = pano_for_mat
 		cur += 1		
 
@@ -62,5 +63,12 @@ panoMeta = {}
 panoMeta['len'] = len(panoDict.keys())	
 panoMeta['data'] = panoDict		
 
-sio.savemat('streetview_set.mat', panoMeta)
+sio.savemat('streetview_set_' + fileID + '.mat', panoMeta)
 
+# PahtPoint
+pathPoint = []
+for key, value in panoDict.iteritems():
+    	pathPoint.append(value['Lat']+','+ value['Lon'])
+print pathPoint
+with open('pathPoint_' + fileID + '.json', 'w') as outfile:
+    json.dump(pathPoint, outfile)

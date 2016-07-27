@@ -74,8 +74,9 @@ class PanoramaMetadata:
 		self.OriginalLat = panoDocCtx.xpathEval("/panorama/data_properties/@original_lat")[0].content
 		self.OriginalLon = panoDocCtx.xpathEval("/panorama/data_properties/@original_lng")[0].content
 		self.Copyright = panoDocCtx.xpathEval("/panorama/data_properties/copyright/text()")[0].content
-		self.Text = panoDocCtx.xpathEval("/panorama/data_properties/text/text()")[0].content
-		self.Region = panoDocCtx.xpathEval("/panorama/data_properties/region/text()")[0].content
+		# Uuknow
+		#self.Text = panoDocCtx.xpathEval("/panorama/data_properties/text/text()")[0].content
+		#self.Region = panoDocCtx.xpathEval("/panorama/data_properties/region/text()")[0].content
 		self.Country = panoDocCtx.xpathEval("/panorama/data_properties/country/text()")[0].content
 
 		self.ProjectionType = panoDocCtx.xpathEval("/panorama/projection_properties/@projection_type")[0].content

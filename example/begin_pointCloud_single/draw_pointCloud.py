@@ -13,7 +13,7 @@ with open('src/json/dashcam/deep_match/' + ID + '/pointCloud.json') as data_file
 
 def parsePointClout_SFM(points):
     points_SFM = pointCloud['points']
-    print len(points_SFM.keys())
+    print (len(points_SFM.keys()))
     for key, value in points_SFM.iteritems():
         c = value['color'];
         c.append(255.0);

@@ -48,3 +48,6 @@ print 1, 2, 3
 yoo = [1, 2, 3]
 yoo.append(4);
 print yoo
+
+dict = {'iii':5, 4:8}
+print dict['iii']

@@ -74,9 +74,11 @@ class PanoramaMetadata:
 		self.OriginalLat = panoDocCtx.xpathEval("/panorama/data_properties/@original_lat")[0].content
 		self.OriginalLon = panoDocCtx.xpathEval("/panorama/data_properties/@original_lng")[0].content
 		self.Copyright = panoDocCtx.xpathEval("/panorama/data_properties/copyright/text()")[0].content
-		self.Text = panoDocCtx.xpathEval("/panorama/data_properties/text/text()")[0].content
-		self.Region = panoDocCtx.xpathEval("/panorama/data_properties/region/text()")[0].content
-		self.Country = panoDocCtx.xpathEval("/panorama/data_properties/country/text()")[0].content
+		# some panorama hasn't the files follow
+		# which will cause error
+		#self.Text = panoDocCtx.xpathEval("/panorama/data_properties/text/text()")[0].content
+		#self.Region = panoDocCtx.xpathEval("/panorama/data_properties/region/text()")[0].content
+		#self.Country = panoDocCtx.xpathEval("/panorama/data_properties/country/text()")[0].content
 
 		self.ProjectionType = panoDocCtx.xpathEval("/panorama/projection_properties/@projection_type")[0].content
 		self.ProjectionPanoYawDeg = panoDocCtx.xpathEval("/panorama/projection_properties/@pano_yaw_deg")[0].content
@@ -102,6 +104,7 @@ class PanoramaMetadata:
 		tmp = panoDocCtx.xpathEval("/panorama/model/depth_map/text()")
 		if len(tmp) > 0:
 			tmp = tmp[0].content
+			self.rawDepth = tmp;
 			tmp = zlib.decompress(base64.urlsafe_b64decode(tmp + self.MakePadding(tmp)))
 			self.DecodeDepthMap(tmp)
 
@@ -139,7 +142,7 @@ class PanoramaMetadata:
 		(headerSize, numPlanes, panoWidth, panoHeight, planeIndicesOffset) = struct.unpack('<BHHHB', raw[0:8])
 
 		##myTest_yoo	
-		self.rawDepth = raw;
+		#self.rawDepth = raw;
 		
 		self.DepthHeader = {'numPlanes' : numPlanes, 'panoWidth' : panoWidth, 'panoHeight' : panoHeight}
 		if headerSize != 8 or planeIndicesOffset != 8:
@@ -152,6 +155,7 @@ class PanoramaMetadata:
 
 		self.DepthMapPlanes = []
 		for i in xrange(0, numPlanes):
+			#(d, nx, ny, nz) = struct.unpack('<ffff', raw[pos:pos+16])
 			# This should be the right order
 			(nx, ny, nz, d) = struct.unpack('<ffff', raw[pos:pos+16])
 
