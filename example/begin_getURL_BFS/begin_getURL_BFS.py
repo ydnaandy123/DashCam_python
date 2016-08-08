@@ -18,7 +18,7 @@ cur = 0
 panoList.append(start_panoId)
 panoSet.add(start_panoId)
 pano = streetview_my.GetPanoramaMetadata(start_panoId)
-pano_basic = {'Lat':pano.Lat, 'Lon':pano.Lon, 'panoId':pano.PanoId, 'AnnotationLinks':pano.AnnotationLinks, 'rawDepth':pano.rawDepth}
+pano_basic = {'Lat':pano.Lat, 'Lon':pano.Lon, 'panoId':pano.PanoId, 'AnnotationLinks':pano.AnnotationLinks, 'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg, 'rawDepth':pano.rawDepth}
 panoDict['street' + str(cur)] = pano_basic
 cur += 1
 '''
