@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import numpy as np
 import cv2
 import zlib
@@ -36,7 +36,27 @@ class StreetView3D:
 
 	def MakePadding(self, s):
 		return (4 - (len(s) % 4)) * '='
+	def showDepth(self):
+		depthMap = -self.depthMap * 255 / 50		
+		depthMap[np.nonzero(np.isnan(depthMap))] = 255
+		depthMap[np.nonzero(depthMap > 255)] = 255
+		cv2.imshow('image', depthMap.astype(np.uint8))
+		cv2.waitKey(0)
+	def showIndex(self):
+		height = self.DepthHeader['panoHeight']
+		width = self.DepthHeader['panoWidth']
+		indices= np.array((self.DepthMapIndices))
+		indexMap = np.zeros((height * width, 3), dtype = np.uint8)
+		colorMap = np.random.random_integers(0,255,(self.DepthHeader['numPlanes'], 3))
+		for i in range(0,self.DepthHeader['numPlanes']):
+			indexMap = np.zeros((height * width, 3), dtype = np.uint8)
+			indexMap[np.nonzero(indices == i), :] = colorMap[i,:]
+			cv2.imwrite('index'+ str(i) +'.png',indexMap.reshape((height, width, 3)))
 
+		#indexMap *=  255 / 50	
+		#indexMap[np.nonzero(indexMap > 255)] = 255
+		cv2.imshow('image', indexMap.reshape((height, width, 3)).astype(np.uint8))
+		cv2.waitKey(0)
 	def CreatePtCloud(self, v):
 		if self.DepthHeader['panoHeight'] != 256 or self.DepthHeader['panoWidth'] != 512:
 			print (self.panoMeta['panoId'], 'DepthMap unsual')
@@ -51,34 +71,43 @@ class StreetView3D:
 				planeIndex = self.DepthMapIndices[h*width +w]
 				plane = self.DepthMapPlanes[planeIndex]
 				depth = plane['d'] / (v[h,w,:].dot(np.array([plane['nx'], plane['ny'], plane['nz']])))
-				if np.isnan(depth):
-					depthMap[h][w] = np.nan
-				else:
-					depthMap[h][w] = -depth / 50 * 255
+				depthMap[h][w] = depth
 				data[h][w]['a_position'] = depth * v[h,w,:]
 				#data[h][w]['a_color'] = np.array(panorama[h,w]) / 255
-			
-		depthMap[depthMap == np.nan] = 255
-		cv2.imshow('image', depthMap.astype(np.uint8))
-		cv2.waitKey(0)
+		self.depthMap = depthMap		
 		data['a_color'] = np.array(panorama) / 255
 		self.data_ptCLoud = data	
-
+	def CreatePtCloud2(self, v):
+		height = self.DepthHeader['panoHeight']
+		width = self.DepthHeader['panoWidth']
+		depthMap = np.zeros((height*width), dtype = np.float32)
+		planeIndices = np.array(self.DepthMapIndices)
+		depthMap[np.nonzero(planeIndices == 0)] = np.nan
+		v = v.reshape((height*width, 3))
+		for i in range (1, self.DepthHeader['numPlanes']):
+			plane = self.DepthMapPlanes[i]
+			p_depth = np.ones((height*width)) * plane['d']
+			depth = p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
+			#depth = depth.reshape((height, width))
+			depthMap[np.nonzero(planeIndices == i)] = depth[np.nonzero(planeIndices == i)]
+			#depthMap = depth
+		self.depthMap = depthMap.reshape((height, width))	
 def CreateSphericalRay(height, width):
     	
-    h = np.arange(height)
+    h = np.arange((height))
     theta = (height - h - 0.5) / height * np.pi
     sin_theta = np.sin(theta)
     cos_theta = np.cos(theta)
 
-    w = np.arange(width)
+    w = np.arange((width))
     phi = (width - w - 0.5) / width * 2 * np.pi + np.pi/2
     sin_phi = np.sin(phi)
     cos_phi = np.cos(phi)
 
     v = np.zeros((height, width, 3))
-    v[:,:,0] = sin_theta.reshape(height,1) * cos_phi
-    v[:,:,1] = sin_theta.reshape(height,1) * sin_phi
-    v[:,:,2] = cos_theta.reshape(height,1) * np.ones(width)
+	## interesting
+    v[:,:,0] = sin_theta.reshape((height,1)) * cos_phi
+    v[:,:,1] = sin_theta.reshape((height,1)) * sin_phi
+    v[:,:,2] = cos_theta.reshape((height,1)) * np.ones(width)
 
     return v

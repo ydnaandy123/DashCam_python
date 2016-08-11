@@ -8,7 +8,7 @@ import google_store
 with open('src/json/dashcam/namelist_50.json') as data_file:    
     namelist_50 = json.load(data_file)
     for index, namelist in enumerate(namelist_50):
-        if index == 5:
+        if index == 39:
             [fileIndex, fileID] = namelist.split(',')
     data_file.close()
 

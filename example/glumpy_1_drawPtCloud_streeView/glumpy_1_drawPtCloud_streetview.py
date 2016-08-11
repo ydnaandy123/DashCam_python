@@ -8,12 +8,12 @@ import os
 import json
 import shader
 import sys
-sys.path.append('myModule')	# use the module under Module 
+sys.path.append('module')	# use the module under Module 
 import google_parse
 import timeit
 ID = '000731';
-fileDir = 'src/panoData/' + ID 
-ImgDir = 'src/panoImg/' + ID 
+fileDir = 'src/panometa/' + ID 
+ImgDir = 'src/panorama/' + ID 
 for fileName in os.listdir(fileDir):
     #print (fileName)
     pass
@@ -23,7 +23,7 @@ with open(fileDir + '/' + fileName) as data_file:
     panorama =  cv2.imread(ImgDir + '/' + fileName.split('.')[0] + '.jpg', cv2.IMREAD_COLOR)
     print (panoMeta['Lat'], panoMeta['Lon'], panoMeta['panoId'])
     
-sv3D = google_parse_panoMeta.StreetView3D(panoMeta, panorama)
+sv3D = google_parse.StreetView3D(panoMeta, panorama)
 
 def widowSetting():
     window = app.Window(1024,1024, color=(0,0,0,1))
@@ -81,11 +81,14 @@ def widowSetting():
 
 
 # All the google depth maps seem to be store as this size, at least for now
-sphericalRay = google_parse_panoMeta.CreateSphericalRay(256, 512)
+sphericalRay = google_parse.CreateSphericalRay(256, 512)
 tic=timeit.default_timer()
-sv3D.CreatePtCloud(sphericalRay)
+#sv3D.CreatePtCloud2(sphericalRay)
 toc=timeit.default_timer()
 print (toc-tic)
+#sv3D.showDepth()
+sv3D.showIndex()
+sys.exit()
 data_ptCloud_streetView3D = sv3D.data_ptCLoud
 program_ptCloud = gloo.Program(shader.vertex, shader.fragment) 
 data_ptCloud_streetView3D = data_ptCloud_streetView3D.view(gloo.VertexBuffer);

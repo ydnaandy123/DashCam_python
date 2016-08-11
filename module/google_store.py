@@ -18,7 +18,7 @@ def info_3d(fileID, pathPoint_set_info3d):
 			panoSet.add(pano.PanoId)
 			# zoom default 1
 			img = getPanorama(pano.PanoId, 1)
-			pano_basic = {'panoId':pano.PanoId, 'Lat':pano.Lat, 'Lon':pano.Lon, 'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg, 'AnnotationLinks':pano.AnnotationLinks, 'rawDepth':pano.rawDepth}
+			pano_basic = {'panoId':pano.PanoId, 'Lat':pano.Lat, 'Lon':pano.Lon, 'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg, 'AnnotationLinks':pano.AnnotationLinks, 'rawDepth':pano.rawDepth, 'Text':pano.Text}
 			if not os.path.exists('src/panometa/' + fileID):
 				os.makedirs('src/panometa/' + fileID)       				
 				os.makedirs('src/panorama/' + fileID)     
@@ -74,7 +74,10 @@ class PanoramaMetadata:
 		self.Copyright = panoDocCtx.xpathEval("/panorama/data_properties/copyright/text()")[0].content
 		# some panorama hasn't the files follow
 		# which will cause error
-		#self.Text = panoDocCtx.xpathEval("/panorama/data_properties/text/text()")[0].content
+		try:
+			self.Text = panoDocCtx.xpathEval("/panorama/data_properties/text/text()")[0].content
+		except:
+			self.Text = ''
 		#self.Region = panoDocCtx.xpathEval("/panorama/data_properties/region/text()")[0].content
 		#self.Country = panoDocCtx.xpathEval("/panorama/data_properties/country/text()")[0].content
 
@@ -84,13 +87,14 @@ class PanoramaMetadata:
 		self.ProjectionTiltPitchDeg = panoDocCtx.xpathEval("/panorama/projection_properties/@tilt_pitch_deg")[0].content
 		
 		self.AnnotationLinks = []
-		for cur in panoDocCtx.xpathEval("/panorama/annotation_properties/link"):
+		for cur in panoDocCtx.xpathEval("/panorama/annotation_properties/link"):			
 			self.AnnotationLinks.append({ 'YawDeg': cur.xpathEval("@yaw_deg")[0].content,
 					    'PanoId': cur.xpathEval("@pano_id")[0].content,
 					    'RoadARGB': cur.xpathEval("@road_argb")[0].content
-					    #,'Text': cur.xpathEval("link_text/text()")[0].content,
+					    # ,'Text': text
 						# some panorama hasn't this file
 						# which will cause error
+						# text = cur.xpathEval("link_text/text()")[0].content
 			})
 		
 		tmp = panoDocCtx.xpathEval("/panorama/model/depth_map/text()")
@@ -106,7 +110,7 @@ class PanoramaMetadata:
 			
 			tmp += "%s: %s\n" % x
 		return tmp
-
+# h_base, w_base should be renamed...
 def getPanorama(panoid, zoom):
 	h = pow(2,zoom-1)
 	w = pow(2, zoom)

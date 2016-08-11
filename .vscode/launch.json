@@ -1,28 +1,34 @@
 {
     "version": "0.2.0",
     "configurations": [
-        {
+        {            
             "name": "Python",
             "type": "python",
+            "pythonPath":"${config.python.pythonPath}", 
             "request": "launch",
             "stopOnEntry": true,
+            "externalConsole":false,
             "program": "${file}",
+            "cwd": "${workspaceRoot}",
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit",
                 "RedirectOutput"
-            ]
+            ],
+            "env": {"name":"value"}
         },
         {
             "name": "Python Console App",
             "type": "python",
             "request": "launch",
-            "stopOnEntry": true,
+            "stopOnEntry": false,
             "program": "${file}",
-            "externalConsole": true,
+            "externalConsole": false,
+            "cwd": "${workspaceRoot}",
             "debugOptions": [
                 "WaitOnAbnormalExit",
-                "WaitOnNormalExit"
+                "WaitOnNormalExit",
+                "RedirectOutput"
             ]
         },
         {
