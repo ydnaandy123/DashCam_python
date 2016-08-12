@@ -1,7 +1,7 @@
-import numpy as np
-b =  (np.random.random_integers(5,10,(5,3)))
-a = np.zeros((3,3,3))
+#!/usr/bin/python2
+import sys
+sys.path.append('module')	# use the module under 'module'
+import google_store
 
-a[0:2,2,:] = b[3,:]
 
-print (a) 
+google_store.BFS('Civic_Boulevard', (25.0446577,121.5384595), 50)

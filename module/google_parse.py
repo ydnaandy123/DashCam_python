@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import numpy as np
+import numpy.matlib
 import cv2
 import zlib
 import base64
@@ -91,7 +92,13 @@ class StreetView3D:
 			#depth = depth.reshape((height, width))
 			depthMap[np.nonzero(planeIndices == i)] = depth[np.nonzero(planeIndices == i)]
 			#depthMap = depth
-		self.depthMap = depthMap.reshape((height, width))	
+		self.depthMap = depthMap.reshape((height, width))
+		panorama = cv2.resize(self.panorama, (width, height), cv2.INTER_LINEAR )
+		data = np.zeros((height, width), dtype = [('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+		xyz = ((np.transpose(v) * np.matlib.repmat(depthMap, 3,1))) 
+		data['a_position'] = np.transpose(xyz).reshape((height, width, 3))
+		data['a_color'] = np.array(panorama) / 255
+		self.data_ptCLoud = data		
 def CreateSphericalRay(height, width):
     	
     h = np.arange((height))

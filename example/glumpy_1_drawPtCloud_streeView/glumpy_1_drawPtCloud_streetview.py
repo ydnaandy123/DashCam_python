@@ -11,7 +11,7 @@ import sys
 sys.path.append('module')	# use the module under Module 
 import google_parse
 import timeit
-ID = '000731';
+ID = 'Civic_Boulevard';
 fileDir = 'src/panometa/' + ID 
 ImgDir = 'src/panorama/' + ID 
 for fileName in os.listdir(fileDir):
@@ -58,7 +58,9 @@ def widowSetting():
     @window.event
     def on_mouse_scroll(x, y, dx, dy):
         global zoom, size
-        size += dy*1 
+        size += dy*0.1 
+        if size < 0:
+            size = 0.1
         #zoom += dy*1
         #program_ptCloud['u_view'] = glm.translation(0, 0, zoom)
 
@@ -83,12 +85,12 @@ def widowSetting():
 # All the google depth maps seem to be store as this size, at least for now
 sphericalRay = google_parse.CreateSphericalRay(256, 512)
 tic=timeit.default_timer()
-#sv3D.CreatePtCloud2(sphericalRay)
+sv3D.CreatePtCloud2(sphericalRay)
 toc=timeit.default_timer()
 print (toc-tic)
 #sv3D.showDepth()
-sv3D.showIndex()
-sys.exit()
+#sv3D.showIndex()
+#sys.exit()
 data_ptCloud_streetView3D = sv3D.data_ptCLoud
 program_ptCloud = gloo.Program(shader.vertex, shader.fragment) 
 data_ptCloud_streetView3D = data_ptCloud_streetView3D.view(gloo.VertexBuffer);
