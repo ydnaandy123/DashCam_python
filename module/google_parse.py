@@ -5,6 +5,34 @@ import cv2
 import zlib
 import base64
 import struct
+import os
+import json
+#
+import base_process
+class StreetView3DRegion:
+	def __init__(self, fileID):    		
+		fname = 'src/panometa/' + fileID + '/fileMeta.json'
+		if os.path.isfile(fname) :
+			print ('Successfully find the existing region"' + fileID + '"(accroding to the fileMeta):')
+			with open(fname) as data_file:    
+				fileMeta = json.load(data_file)
+				self.panoDict = fileMeta['id2GPS']
+				data_file.close() 		
+		else:
+			print ('Fail to open the file or path doesn\'t exit')
+	def createTopoloy(self):
+		id2GPS = self.panoDict	
+		panoNum = len(id2GPS)	
+		data = np.zeros((panoNum), dtype = [('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+		ECEF = []
+		for id in id2GPS:
+			GPS = id2GPS[id]
+			ECEF.append(base_process.geo2ECEF(float(GPS[0]), float(GPS[1])))
+		data['a_color'] = [0,1,0]
+		data['a_position'] = np.asarray(ECEF, dtype = np.float32)
+		data['a_position'] -= data[0]['a_position']
+		self.topology = data
+		return data
 class StreetView3D:   
 
 	def __init__(self, panoMeta, panorama):

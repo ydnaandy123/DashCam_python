@@ -6,10 +6,21 @@ from glumpy.ext import png
 import json
 import shader
 
-ID = '000034';
+ID = '000067';
 with open('src/json/dashcam/deep_match/' + ID + '/pointCloud.json') as data_file:    
     pointCloud = json.load(data_file)
 
+with open('src/json/dashcam/detection_box_result/' + ID + '/box_result_3d.json') as data_file:    
+    box = json.load(data_file)
+    XYZ = []
+    for img in box:
+        for car in box[img]:
+            XYZ.append([box[img][car][0][0][0][0], box[img][car][0][0][1][0], box[img][car][0][0][2][0]])
+    
+    data_len = len(box)
+    data = np.zeros(data_len, dtype = [('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+    data['a_position'] = np.asarray(XYZ, dtype = np.float32)
+    data['a_color'] = [255,0,0]
 
 def parsePointClout_SFM(pointCloud):
     points_SFM = pointCloud['points']
@@ -74,6 +85,8 @@ def widowSetting():
 
 
 data_ptCloud_SFM = parsePointClout_SFM(pointCloud)
+data_ptCloud_SFM = np.append(data,data_ptCloud_SFM)
+print (data_ptCloud_SFM)
 program_ptCloud = gloo.Program(shader.vertex, shader.fragment) 
 
 data_ptCloud_SFM = data_ptCloud_SFM.view(gloo.VertexBuffer);

@@ -23,17 +23,19 @@ class PanoFetcher:
 		self.fileDirCheck(fileID)
 		panoSet = set()
 		panoList = []
+		panoDict = {}
 		cur = 0
 		# Change the GPS to panoID
 		# and put fisrt panoID into the list
 		(lat, lon) = startGPS
 		pano = getPanoramaMetadata(lat=lat, lon=lon, radius=self.radius)
 		panoSet.add(pano.PanoId)
-		panoList.append(pano.PanoId)		
+		panoList.append(pano.PanoId)	
 		# Until maximum
 		for cur in range(0, maxPano):
     		# Get the pano accroding to the list 
 			pano = getPanoramaMetadata(panoid = panoList[cur], radius=self.radius)
+			panoDict[pano.PanoId] = [pano.Lat, pano.Lon]	
 			img = getPanorama(pano.PanoId,  zoom = self.zoom)
 			try:
 				pano_basic = {'panoId':pano.PanoId, 'Lat':pano.Lat, 
@@ -51,9 +53,66 @@ class PanoFetcher:
 				pano_basic = {}
 			with open('src/panometa/' + fileID + '/' + pano.PanoId + '.json', 'w') as outfile:
 				json.dump(pano_basic, outfile)
-				outfile.close()
+				outfile.close()						
 			cv2.imwrite('src/panorama/' + fileID + '/' + pano.PanoId + '.jpg', img)
-			print cur, lat, lon, pano.PanoId
+			print cur, pano.Lat, pano.Lon, pano.PanoId
+		with open('src/panometa/' + fileID + '/fileMeta.json', 'w') as outfile:
+			fileMeta = {'panoList':panoList, 'cur':cur, 'id2GPS':panoDict}
+			print "id2GPS's length: %d" % len (panoDict)
+			print "panoList's length: %d" % len(panoList)
+			json.dump(fileMeta, outfile)
+			outfile.close()								
+		return				
+	def BFS_aug(self, fileID, startGPS=None, maxPano=100):		
+		fname = 'src/panometa/' + fileID + '/fileMeta.json'
+		if os.path.isfile(fname) :
+			print 'Augment the existing region"' + fileID + '"(accroding to the fileMeta):'
+			with open(fname) as data_file:    
+				fileMeta = json.load(data_file)
+				panoList = fileMeta['panoList']
+				cur = fileMeta['cur']
+				panoDict = fileMeta['id2GPS']
+				print panoList, cur
+				data_file.close() 
+
+			panoSet = set(panoList)
+			cur = cur + 1
+			# Until maximum
+			for cur in range(cur + 0, cur + maxPano):
+				# Get the pano accroding to the list 
+				pano = getPanoramaMetadata(panoid = panoList[cur], radius=self.radius)
+				panoDict[pano.PanoId] = [pano.Lat, pano.Lon]	
+				img = getPanorama(pano.PanoId,  zoom = self.zoom)
+				try:
+					pano_basic = {'panoId':pano.PanoId, 'Lat':pano.Lat, 
+								'Lon':pano.Lon, 'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg, 
+								'AnnotationLinks':pano.AnnotationLinks, 'rawDepth':pano.rawDepth, 
+								'Text':pano.Text}
+					# Add new founded panos into the list
+					for link in pano.AnnotationLinks:	
+						if (link['PanoId'] not in panoSet):				
+							panoId = link['PanoId']
+							panoList.append(panoId)
+							panoSet.add(panoId)						
+				except:
+					print pano.PanoId + ' is file corrupt.'
+					pano_basic = {}
+				with open('src/panometa/' + fileID + '/' + pano.PanoId + '.json', 'w') as outfile:
+					json.dump(pano_basic, outfile)
+					outfile.close()			
+				cv2.imwrite('src/panorama/' + fileID + '/' + pano.PanoId + '.jpg', img)
+				print cur, pano.Lat, pano.Lon, pano.PanoId	
+			with open('src/panometa/' + fileID + '/fileMeta.json', 'w') as outfile:
+				fileMeta = {'panoList':panoList, 'cur':cur, 'id2GPS':panoDict}
+				print "id2GPS's length: %d" % len (panoDict)
+				print "panoList's length: %d" % len(panoList)
+				json.dump(fileMeta, outfile)
+				outfile.close()								
+			return
+		else:
+			print 'Create the region"' + fileID + '" first time.(Or lack of fileMeta):'
+			self.BFS(fileID, startGPS, maxPano)
+			return		
 
 	def info_3d(self, fileID, pathPoint_set_info3d):
 		panoSet = set()
