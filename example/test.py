@@ -4,6 +4,7 @@ sys.path.append('module')	# use the module under 'module'
 import streetview_my
 import numpy as np 
 import base_process
+import streetview_my
 
 lat, lon = 25.0446577, 121.5384595
 print base_process.GPS2GL_greatCircle(lat, lon)
@@ -13,3 +14,10 @@ print base_process.GL2GPS_greatCircle(base_process.GPS2GL_greatCircle(lat, lon))
 print (Y, Z, X) 
 print base_process.ECEF2geo(X, Y, Z)
 #google_store.BFS('Civic_Boulevard', (25.0446577,121.5384595), 50)
+
+
+pano = streetview_my.GetPanoramaMetadata(panoid='caDsLwKtZTEAAAAGOwbaMA')
+# caDsLwKtZTEAAAAGOwbaMA
+# k7U
+# muuRckKs3mFh2KUtQ
+print pano.Lon

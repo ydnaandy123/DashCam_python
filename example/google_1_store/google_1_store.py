@@ -22,5 +22,5 @@ fileID = str(dashCamFileProcess.list50[10][1])
 #panofetcher.info_3d(fileID, pathPoint_set_info3d)
 
 
-panofetcher.BFS_aug('test2', (24.7947302,120.9910429), 10)
+panofetcher.BFS_aug('Civic_Boulevard', (25.0446129,121.5401195), 200)
 #panofetcher.BFS('NTHU', (24.7947302,120.9910429), 20)

@@ -28,9 +28,9 @@ class StreetView3DRegion:
 		for id in id2GPS:
 			GPS = id2GPS[id]
 			ECEF.append(base_process.geo2ECEF(float(GPS[0]), float(GPS[1])))
-		data['a_color'] = [0,1,0]
+		data['a_color'] = [1,1,1]
 		data['a_position'] = np.asarray(ECEF, dtype = np.float32)
-		data['a_position'] -= data[0]['a_position']
+		#data['a_position'] -= data[0]['a_position']
 		self.topology = data
 		return data
 class StreetView3D:   

@@ -80,9 +80,13 @@ class PanoFetcher:
 			# Until maximum
 			for cur in range(cur + 0, cur + maxPano):
 				# Get the pano accroding to the list 
-				pano = getPanoramaMetadata(panoid = panoList[cur], radius=self.radius)
-				panoDict[pano.PanoId] = [pano.Lat, pano.Lon]	
-				img = getPanorama(pano.PanoId,  zoom = self.zoom)
+				try: # THIS is so serious
+				    pano = getPanoramaMetadata(panoid = panoList[cur], radius=self.radius)
+				    panoDict[pano.PanoId] = [pano.Lat, pano.Lon]	
+				    img = getPanorama(pano.PanoId,  zoom = self.zoom)
+				except:
+					print "Google what's worng with " + panoList[cur]
+					continue
 				try:
 					pano_basic = {'panoId':pano.PanoId, 'Lat':pano.Lat, 
 								'Lon':pano.Lon, 'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg, 
@@ -143,7 +147,6 @@ def getUrlContents(url):
 	data = f.read()
 	f.close()
 	return data
-
 # panoid is the value from panorama metadata
 # OR: supply lat/lon/radius to find the nearest pano to lat/lon within radius
 def getPanoramaMetadata(panoid = None, lat = None, lon = None, radius = 30):
@@ -266,3 +269,5 @@ def url_to_image(url):
 	image = cv2.imdecode(image, cv2.IMREAD_COLOR) 
 	# return the image
 	return image    	
+
+

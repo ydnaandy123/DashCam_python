@@ -1,38 +1,51 @@
+'''
 #!/usr/bin/python2
 import sys
 sys.path.append('module')	# use the module under 'module'
-import file_process
 import google_store
+
+# Create PanoFetcher and dashCamFileProcess
+zoom, radius = 1, 30
+panofetcher = google_store.PanoFetcher(zoom, radius)
+# D1: large google date downloading
+# no idead what's going on...
+panofetcher.BFS_aug('Civic_Boulevard_forDemo', (25.0446129,121.5401195), 10)
+# some core data missing (ex:depth)
+#panofetcher.BFS_aug('Civic_Boulevard_forDemo', (25.0446129,121.5401195), 10)
+'''
+
+#!/usr/bin/python3
+import sys
+sys.path.append('module')	# use the module under 'module'
+import google_parse
 import base_process
-
-# Q1: google (lat, lon)
-pano = google_store.getPanoramaMetadata(lat = 25.044670, lon = 121.538450)
-print pano.Lat, pano.Lon
-print pano.OriginalLat, pano.OriginalLon
-
-# Q2: The World Geodetic System (WGS) is a standard 
+# D2: The World Geodetic System (WGS) is a standard 
 #     or use in cartography, geodesy, and navigation including by GPS. 
 #     It comprises a standard coordinate system for the Earth
-lat, lon = 25.0446577, 121.5384595
-# Original
-print 'Original:'
-print base_process.GPS2GL_greatCircle(lat, lon)
-print base_process.GL2GPS_greatCircle(base_process.GPS2GL_greatCircle(lat, lon))
-# ECEF + WGS84
-print 'ECEF + WGS84:'
-[X, Y, Z] = base_process.geo2ECEF(lat = lat, lon = lon)
-print (Y, Z, X) 
-print base_process.ECEF2geo(X, Y, Z)
+# base_process
+fileID = 'Civic_Boulevard'
+streetView3DRegion = google_parse.StreetView3DRegion(fileID)
+topology = streetView3DRegion.createTopoloy()
+print (topology['a_position'])
+# D3: different_axis
+# glumpy_5_globalSV3D
 
-# D1: BFS_aug
-#in3d.png(multiple ways)
-#google_1_store.py
+# D4: car_box
+# glumpy_0_drawPtCloud_sfm
 
-#---python3---(local)
 
-# D2: topology
-#OSM
-#google glumpy_4_common_setting
+
+
+
+
+
+
+
+
+
+
+
+
 
 # D3: ptCloud construct time
 #glumpy_1_drawPtCloud_streetview

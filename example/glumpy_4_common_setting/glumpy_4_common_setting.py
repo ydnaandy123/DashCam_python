@@ -7,7 +7,13 @@ import google_parse
 fileID = 'test'
 streetView3DRegion = google_parse.StreetView3DRegion(fileID)
 topology = streetView3DRegion.createTopoloy()
-#data = np.zeros((100), dtype = [('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+import numpy as np
+data = np.zeros((7), dtype = [('a_position', np.float32, 3), ('a_color', np.float32, 3)])
 
-streetView3D = glumpy_setting.ProgramSV3D(topology)
+data['a_color'] = [[1, 1, 1], [1, 0, 0], [1, 0, 0], [0, 1, 0], [0, 1, 0], [0, 0, 1], [0, 0, 1]]
+data['a_position'] = [[0, 0, 0], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]]
+print (topology)
+topology['a_position']  = topology['a_position'] / 6371000.0 * 20
+streetView3D = glumpy_setting.Program()
+streetView3D.addPoint(data)
 streetView3D.widowSetting()
