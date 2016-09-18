@@ -7,140 +7,173 @@ import libxml2
 import json
 import os
 
-# pathPoint in different form
+# Object can getch google's data
+# also deal with different pathPoints in various form
 class PanoFetcher:
 	def __init__(self, zoom = 1, radius = 30):
 		self.zoom = zoom		# Get what pano
 		self.radius = radius	# Panorama's' size	
 
-	def fileDirCheck(self, fileID):
+	def fileDirExist(self, fileID):
 		if not os.path.exists('src/panometa/' + fileID):
-			os.makedirs('src/panometa/' + fileID)       
-		if not os.path.exists('src/panorama/' + fileID):					
-			os.makedirs('src/panorama/' + fileID)      	
+			os.makedirs('src/panometa/' + fileID)
+			return False
+		return True     	
 
 	def BFS(self, fileID, startGPS, maxPano=100):
-		self.fileDirCheck(fileID)
-		panoSet = set()
-		panoList = []
-		panoDict = {}
-		cur = 0
+		self.fileDirExist(fileID)
+		# Initialize panoList, panoDict, panoSet, cur
+		self.panoSet, self.panoList, self.panoDict, self.cur = set(), [], {}, 0
 		# Change the GPS to panoID
 		# and put fisrt panoID into the list
 		(lat, lon) = startGPS
 		pano = getPanoramaMetadata(lat=lat, lon=lon, radius=self.radius)
-		panoSet.add(pano.PanoId)
-		panoList.append(pano.PanoId)	
+		self.panoSet.add(pano.PanoId)
+		self.panoList.append(pano.PanoId)	
 		# Until maximum
-		for cur in range(0, maxPano):
+		for self.cur in range(0, maxPano):
     		# Get the pano accroding to the list 
-			pano = getPanoramaMetadata(panoid = panoList[cur], radius=self.radius)
-			panoDict[pano.PanoId] = [pano.Lat, pano.Lon]	
-			img = getPanorama(pano.PanoId,  zoom = self.zoom)
-			try:
-				pano_basic = {'panoId':pano.PanoId, 'Lat':pano.Lat, 
-							'Lon':pano.Lon, 'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg, 
-							'AnnotationLinks':pano.AnnotationLinks, 'rawDepth':pano.rawDepth, 
-							'Text':pano.Text}
-				# Add new founded panos into the list
-				for link in pano.AnnotationLinks:	
-					if (link['PanoId'] not in panoSet):				
-						panoId = link['PanoId']
-						panoList.append(panoId)
-						panoSet.add(panoId)						
-			except:
-				print pano.PanoId + ' is file corrupt.'
-				pano_basic = {}
-			with open('src/panometa/' + fileID + '/' + pano.PanoId + '.json', 'w') as outfile:
-				json.dump(pano_basic, outfile)
-				outfile.close()						
-			cv2.imwrite('src/panorama/' + fileID + '/' + pano.PanoId + '.jpg', img)
-			print cur, pano.Lat, pano.Lon, pano.PanoId
+			img, pano_basic, panoId = self.getNewPanoMeta()
+			storeDir = 'src/panometa/' + fileID + '/' + panoId
+			self.storePano(storeDir, pano_basic, img)
+			print self.cur, panoId
+		# Store
+		self.storeBFSMeta(fileID)
+	def storeBFSMeta(self, fileID):
 		with open('src/panometa/' + fileID + '/fileMeta.json', 'w') as outfile:
-			fileMeta = {'panoList':panoList, 'cur':cur, 'id2GPS':panoDict}
-			print "id2GPS's length: %d" % len (panoDict)
-			print "panoList's length: %d" % len(panoList)
+			fileMeta = {'panoList':self.panoList, 'cur':self.cur, 'id2GPS':self.panoDict}
+			print "id2GPS's length: %d" % len (self.panoDict)
+			print "panoList's length: %d" % len(self.panoList)
 			json.dump(fileMeta, outfile)
-			outfile.close()								
-		return				
+			outfile.close()		
 	def BFS_aug(self, fileID, startGPS=None, maxPano=100):		
 		fname = 'src/panometa/' + fileID + '/fileMeta.json'
 		if os.path.isfile(fname) :
 			print 'Augment the existing region"' + fileID + '"(accroding to the fileMeta):'
+			# Initialize panoList, panoDict, panoSet, cur
 			with open(fname) as data_file:    
 				fileMeta = json.load(data_file)
-				panoList = fileMeta['panoList']
-				cur = fileMeta['cur']
-				panoDict = fileMeta['id2GPS']
-				print panoList, cur
+				self.panoList = fileMeta['panoList']
+				cur = fileMeta['cur'] + 1
+				self.panoDict = fileMeta['id2GPS']
+				print self.panoList, cur - 1
+				self.panoSet = set(self.panoList)
+				self.cur = cur
 				data_file.close() 
-
-			panoSet = set(panoList)
-			cur = cur + 1
 			# Until maximum
-			for cur in range(cur + 0, cur + maxPano):
+			for self.cur in range(cur + 0, cur + maxPano):
 				# Get the pano accroding to the list 
-				try: # THIS is so serious
-				    pano = getPanoramaMetadata(panoid = panoList[cur], radius=self.radius)
-				    panoDict[pano.PanoId] = [pano.Lat, pano.Lon]	
-				    img = getPanorama(pano.PanoId,  zoom = self.zoom)
-				except:
-					print "Google what's worng with " + panoList[cur]
-					continue
-				try:
-					pano_basic = {'panoId':pano.PanoId, 'Lat':pano.Lat, 
-								'Lon':pano.Lon, 'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg, 
-								'AnnotationLinks':pano.AnnotationLinks, 'rawDepth':pano.rawDepth, 
-								'Text':pano.Text}
-					# Add new founded panos into the list
-					for link in pano.AnnotationLinks:	
-						if (link['PanoId'] not in panoSet):				
-							panoId = link['PanoId']
-							panoList.append(panoId)
-							panoSet.add(panoId)						
-				except:
-					print pano.PanoId + ' is file corrupt.'
-					pano_basic = {}
-				with open('src/panometa/' + fileID + '/' + pano.PanoId + '.json', 'w') as outfile:
-					json.dump(pano_basic, outfile)
-					outfile.close()			
-				cv2.imwrite('src/panorama/' + fileID + '/' + pano.PanoId + '.jpg', img)
-				print cur, pano.Lat, pano.Lon, pano.PanoId	
-			with open('src/panometa/' + fileID + '/fileMeta.json', 'w') as outfile:
-				fileMeta = {'panoList':panoList, 'cur':cur, 'id2GPS':panoDict}
-				print "id2GPS's length: %d" % len (panoDict)
-				print "panoList's length: %d" % len(panoList)
-				json.dump(fileMeta, outfile)
-				outfile.close()								
-			return
+				img, pano_basic, panoId = self.getNewPanoMeta()
+				storeDir = 'src/panometa/' + fileID + '/' + panoId
+				self.storePano(storeDir, pano_basic, img)
+				print self.cur, panoId
+			# Store
+			self.storeBFSMeta(fileID)
 		else:
-			print 'Create the region"' + fileID + '" first time.(Or lack of fileMeta):'
+			print 'Create the region "' + fileID + '" first time.(Or lacking the fileMeta):'
 			self.BFS(fileID, startGPS, maxPano)
 			return		
-
+	def getNewPanoMeta(self):
+			try: # THIS is so serious
+			    pano = getPanoramaMetadata(panoid = self.panoList[self.cur], radius=self.radius)
+			    self.panoDict[pano.PanoId] = [pano.Lat, pano.Lon]	
+			    img = getPanorama(pano.PanoId,  zoom = self.zoom)
+			except:
+				print "Google what's worng with " + self.panoList[self.cur]
+			try:
+				pano_basic = {'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg, 
+							'AnnotationLinks':pano.AnnotationLinks, 'rawDepth':pano.rawDepth, 
+							'Text':pano.Text}
+				# Add new founded panos into the list
+				for link in pano.AnnotationLinks:	
+					if (link['PanoId'] not in self.panoSet):				
+						panoId = link['PanoId']
+						self.panoList.append(panoId)
+						self.panoSet.add(panoId)						
+			except:
+				print pano.PanoId + ' lacks some important data.'
+				pano_basic = {}    	
+			return img, pano_basic, pano.PanoId	
+	def storePano(self, storeDir, pano_basic, img):
+		with open(storeDir + '.json', 'w') as outfile:
+			json.dump(pano_basic, outfile)
+			outfile.close()
+		cv2.imwrite(storeDir + '.jpg', img)	    		
 	def info_3d(self, fileID, pathPoint_set_info3d):
 		panoSet = set()
 		fileID += '_info3d'
-		self.fileDirCheck(fileID)	
-		for pathPoint in pathPoint_set_info3d:
-			[lat, lon] = pathPoint.split(',')
-			pano = getPanoramaMetadata(lat=lat, lon=lon, radius=self.radius)
-			print lat, lon, pano.PanoId
-			if pano.PanoId not in panoSet:
-				panoSet.add(pano.PanoId)
-				img = getPanorama(pano.PanoId, zoom = self.zoom)
-				try:
-					pano_basic = {'panoId':pano.PanoId, 'Lat':pano.Lat, 
-								'Lon':pano.Lon, 'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg, 
-								'AnnotationLinks':pano.AnnotationLinks, 'rawDepth':pano.rawDepth, 
-								'Text':pano.Text}
-				except:
-					print pano.PanoId + ' is file corrupt.'
-					pano_basic = {}
-				with open('src/panometa/' + fileID + '/' + pano.PanoId + '.json', 'w') as outfile:
-					json.dump(pano_basic, outfile)
-					outfile.close()
-				cv2.imwrite('src/panorama/' + fileID + '/' + pano.PanoId + '.jpg', img)	
+		if self.fileDirExist(fileID):
+			print 'This info_3d file already exists.'
+		else:
+			print 'Create new info_3d panometa.'	
+			for pathPoint in pathPoint_set_info3d:
+				[lat, lon] = pathPoint.split(',')
+				pano = getPanoramaMetadata(lat=lat, lon=lon, radius=self.radius)
+				print lat, lon, pano.PanoId
+				if pano.PanoId not in panoSet:
+					panoSet.add(pano.PanoId)
+					img = getPanorama(pano.PanoId, zoom = self.zoom)
+					try:
+						pano_basic = {'panoId':pano.PanoId, 'Lat':pano.Lat, 
+									'Lon':pano.Lon, 'ProjectionPanoYawDeg':pano.ProjectionPanoYawDeg, 
+									'AnnotationLinks':pano.AnnotationLinks, 'rawDepth':pano.rawDepth, 
+									'Text':pano.Text}
+					except:
+						print pano.PanoId + ' lacks some important data.'
+						pano_basic = {}
+					storeDir = 'src/panometa/' + fileID + '/' + pano.PanoId
+					self.storePano(storeDir, pano_basic, img)
+# Something I don't familiar
+# This object helps me a alot to parse the google data					
+class PanoramaMetadata:
+    	
+	def __init__(self, panodoc):
+		try:
+			self.PanoDoc = panodoc
+			panoDocCtx = self.PanoDoc.xpathNewContext()
+
+			self.PanoId = panoDocCtx.xpathEval("/panorama/data_properties/@pano_id")[0].content
+			#self.ImageWidth = panoDocCtx.xpathEval("/panorama/data_properties/@image_width")[0].content
+			#self.ImageHeight = panoDocCtx.xpathEval("/panorama/data_properties/@image_height")[0].content
+			#self.TileWidth = panoDocCtx.xpathEval("/panorama/data_properties/@tile_width")[0].content
+			#self.TileHeight = panoDocCtx.xpathEval("/panorama/data_properties/@tile_height")[0].content
+			#self.NumZoomLevels = panoDocCtx.xpathEval("/panorama/data_properties/@num_zoom_levels")[0].content
+			self.Lat = panoDocCtx.xpathEval("/panorama/data_properties/@lat")[0].content
+			self.Lon = panoDocCtx.xpathEval("/panorama/data_properties/@lng")[0].content
+			#self.OriginalLat = panoDocCtx.xpathEval("/panorama/data_properties/@original_lat")[0].content
+			#self.OriginalLon = panoDocCtx.xpathEval("/panorama/data_properties/@original_lng")[0].content
+			#self.Copyright = panoDocCtx.xpathEval("/panorama/data_properties/copyright/text()")[0].content
+			# some panorama hasn't the files follow
+			# which will cause error
+			try:
+				self.Text = panoDocCtx.xpathEval("/panorama/data_properties/text/text()")[0].content
+			except:
+				self.Text = ''
+			#self.Region = panoDocCtx.xpathEval("/panorama/data_properties/region/text()")[0].content
+			#self.Country = panoDocCtx.xpathEval("/panorama/data_properties/country/text()")[0].content
+
+			#self.ProjectionType = panoDocCtx.xpathEval("/panorama/projection_properties/@projection_type")[0].content
+			self.ProjectionPanoYawDeg = panoDocCtx.xpathEval("/panorama/projection_properties/@pano_yaw_deg")[0].content
+			#self.ProjectionTiltYawDeg = panoDocCtx.xpathEval("/panorama/projection_properties/@tilt_yaw_deg")[0].content
+			#self.ProjectionTiltPitchDeg = panoDocCtx.xpathEval("/panorama/projection_properties/@tilt_pitch_deg")[0].content
+			
+			self.AnnotationLinks = []
+			for cur in panoDocCtx.xpathEval("/panorama/annotation_properties/link"):			
+				self.AnnotationLinks.append({ 'YawDeg': cur.xpathEval("@yaw_deg")[0].content,
+							'PanoId': cur.xpathEval("@pano_id")[0].content,
+							'RoadARGB': cur.xpathEval("@road_argb")[0].content
+							# ,'Text': text
+							# some panorama hasn't this file
+							# which will cause error
+							# text = cur.xpathEval("link_text/text()")[0].content
+				})
+			
+			tmp = panoDocCtx.xpathEval("/panorama/model/depth_map/text()")
+			if len(tmp) > 0:
+				self.rawDepth = tmp[0].content
+		except:
+			print self.PanoId + 'has some problem.'
+
 
 def getUrlContents(url):
 	f = urllib2.urlopen(url)
@@ -168,55 +201,6 @@ def getPanoramaMetadata(panoid = None, lat = None, lon = None, radius = 30):
 	if not findpanoxml.find('data_properties'):
 		return None
 	return PanoramaMetadata(libxml2.parseDoc(findpanoxml))
-
-class PanoramaMetadata:
-    	
-	def __init__(self, panodoc):
-		try:
-			self.PanoDoc = panodoc
-			panoDocCtx = self.PanoDoc.xpathNewContext()
-
-			self.PanoId = panoDocCtx.xpathEval("/panorama/data_properties/@pano_id")[0].content
-			self.ImageWidth = panoDocCtx.xpathEval("/panorama/data_properties/@image_width")[0].content
-			self.ImageHeight = panoDocCtx.xpathEval("/panorama/data_properties/@image_height")[0].content
-			self.TileWidth = panoDocCtx.xpathEval("/panorama/data_properties/@tile_width")[0].content
-			self.TileHeight = panoDocCtx.xpathEval("/panorama/data_properties/@tile_height")[0].content
-			self.NumZoomLevels = panoDocCtx.xpathEval("/panorama/data_properties/@num_zoom_levels")[0].content
-			self.Lat = panoDocCtx.xpathEval("/panorama/data_properties/@lat")[0].content
-			self.Lon = panoDocCtx.xpathEval("/panorama/data_properties/@lng")[0].content
-			self.OriginalLat = panoDocCtx.xpathEval("/panorama/data_properties/@original_lat")[0].content
-			self.OriginalLon = panoDocCtx.xpathEval("/panorama/data_properties/@original_lng")[0].content
-			#self.Copyright = panoDocCtx.xpathEval("/panorama/data_properties/copyright/text()")[0].content
-			# some panorama hasn't the files follow
-			# which will cause error
-			try:
-				self.Text = panoDocCtx.xpathEval("/panorama/data_properties/text/text()")[0].content
-			except:
-				self.Text = ''
-			#self.Region = panoDocCtx.xpathEval("/panorama/data_properties/region/text()")[0].content
-			#self.Country = panoDocCtx.xpathEval("/panorama/data_properties/country/text()")[0].content
-
-			self.ProjectionType = panoDocCtx.xpathEval("/panorama/projection_properties/@projection_type")[0].content
-			self.ProjectionPanoYawDeg = panoDocCtx.xpathEval("/panorama/projection_properties/@pano_yaw_deg")[0].content
-			self.ProjectionTiltYawDeg = panoDocCtx.xpathEval("/panorama/projection_properties/@tilt_yaw_deg")[0].content
-			self.ProjectionTiltPitchDeg = panoDocCtx.xpathEval("/panorama/projection_properties/@tilt_pitch_deg")[0].content
-			
-			self.AnnotationLinks = []
-			for cur in panoDocCtx.xpathEval("/panorama/annotation_properties/link"):			
-				self.AnnotationLinks.append({ 'YawDeg': cur.xpathEval("@yaw_deg")[0].content,
-							'PanoId': cur.xpathEval("@pano_id")[0].content,
-							'RoadARGB': cur.xpathEval("@road_argb")[0].content
-							# ,'Text': text
-							# some panorama hasn't this file
-							# which will cause error
-							# text = cur.xpathEval("link_text/text()")[0].content
-				})
-			
-			tmp = panoDocCtx.xpathEval("/panorama/model/depth_map/text()")
-			if len(tmp) > 0:
-				self.rawDepth = tmp[0].content
-		except:
-			pass
 
 
 	def __str__(self):
