@@ -1,23 +1,29 @@
-#!/usr/bin/python2
-import sys
-sys.path.append('module')	# use the module under 'module'
-import streetview_my
-import numpy as np 
-import base_process
-import streetview_my
+import numpy as np
 
-lat, lon = 25.0446577, 121.5384595
-print base_process.GPS2GL_greatCircle(lat, lon)
-print base_process.GL2GPS_greatCircle(base_process.GPS2GL_greatCircle(lat, lon))
+B = np.array([[ -6.25916012e-03,   3.20910811e-01,   0.00000000e+00,
+          4.66891289e+01],
+       [ -2.26589158e-01,   5.09252548e-02,   0.00000000e+00,
+          2.87899723e+01],
+       [  0.00000000e+00,   0.00000000e+00,   1.21887244e-01,
+          1.63451672e-01], 
+          [0, 0, 0, 1]])
 
-[X, Y, Z] = base_process.geo2ECEF(lat = lat, lon = lon)
-print (Y, Z, X) 
-print base_process.ECEF2geo(X, Y, Z)
-#google_store.BFS('Civic_Boulevard', (25.0446577,121.5384595), 50)
+print (B)
 
+A = np.array([[-0.47995195,  0.41581649,  0.77249128,  0.        ],
+       [ 0.87729245,  0.22544707,  0.42371172,  0.        ],
+       [ 0.00203044,  0.88106203, -0.47299644,  0.        ],
+       [0 , 0, 0, 1]])
+#A = np.transpose(A)
 
-pano = streetview_my.GetPanoramaMetadata(panoid='caDsLwKtZTEAAAAGOwbaMA')
-# caDsLwKtZTEAAAAGOwbaMA
-# k7U
-# muuRckKs3mFh2KUtQ
-print pano.Lon
+print (A)
+
+testV = np.array([-72.74919557543679, 14.43233202405186, 1.194673749553661e-15, 1])
+
+print (testV)
+testV = np.dot(B[0:3, 0:4], testV)
+print (testV)
+testV = np.hstack((testV, 1))
+print (testV)
+testV = np.dot(A[0:3, 0:4], testV)
+print (testV)

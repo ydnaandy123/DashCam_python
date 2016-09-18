@@ -1,4 +1,4 @@
-'''
+
 #!/usr/bin/python2
 import sys
 sys.path.append('module')	# use the module under 'module'
@@ -12,8 +12,8 @@ panofetcher = google_store.PanoFetcher(zoom, radius)
 panofetcher.BFS_aug('Civic_Boulevard_forDemo', (25.0446129,121.5401195), 10)
 # some core data missing (ex:depth)
 #panofetcher.BFS_aug('Civic_Boulevard_forDemo', (25.0446129,121.5401195), 10)
-'''
 
+'''
 #!/usr/bin/python3
 import sys
 sys.path.append('module')	# use the module under 'module'
@@ -33,7 +33,7 @@ print (topology['a_position'])
 # D4: car_box
 # glumpy_0_drawPtCloud_sfm
 
-
+'''
 
 
 

@@ -88,7 +88,7 @@ tic=timeit.default_timer()
 sv3D.CreatePtCloud2(sphericalRay)
 toc=timeit.default_timer()
 print (toc-tic)
-#sv3D.showDepth()
+sv3D.showDepth()
 #sv3D.showIndex()
 #sys.exit()
 data_ptCloud_streetView3D = sv3D.data_ptCLoud
