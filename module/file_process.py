@@ -9,7 +9,7 @@ class DashCamFileProcessor:
     
     # Load the seleced 50 files into self.list50
     def loadList50(self):
-        with open('src/json/dashcam/namelist_50.json') as data_file:    
+        with open('/home/andy/src/DashCam/json/namelist_50.json') as data_file:
             namelist50 = json.load(data_file)
             list50 = []
             for index, namelist in enumerate(namelist50):
@@ -22,7 +22,7 @@ class DashCamFileProcessor:
     def getPath_info3d(self, fileID = None, fileIndex = None):
         if fileID != None:
             print 'fileID: ' + fileID
-            with open('src/json/dashcam/deep_match/' + fileID + '/info_3d.json') as data_file:    
+            with open('/home/andy/src/DashCam/json/newSystem_deep_match/' + fileID + '/info_3d.json') as data_file:
                 info_3d = json.load(data_file)
                 data_file.close()
         elif fileIndex != None:

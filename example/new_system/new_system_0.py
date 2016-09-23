@@ -4,7 +4,7 @@
 # accroding to the Dashcam 'info_3d'
 # ==============================================================
 import sys
-sys.path.append('module')	# use the module under 'module'
+sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')	# use the module under 'module'
 import file_process
 import google_store
 
@@ -17,7 +17,7 @@ dashCamFileProcess = file_process.DashCamFileProcessor()
 dashCamFileProcess.loadList50()
 
 # Select one of the fileName among the 50 selected files
-index = 3
+index = 5
 fileID = str(dashCamFileProcess.list50[index][1])
 print fileID, index
 

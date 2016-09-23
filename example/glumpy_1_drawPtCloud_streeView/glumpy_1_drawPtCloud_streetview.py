@@ -8,14 +8,15 @@ import os
 import json
 import shader
 import sys
-sys.path.append('module')	# use the module under Module 
+sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')	# use the module under Module
 import google_parse
 import timeit
-ID = 'Civic_Boulevard';
-fileDir = 'src/panometa/' + ID 
-ImgDir = 'src/panorama/' + ID 
+ID = '000067';
+fileDir = '/home/andy/src/Google/panometa/' + ID
+ImgDir = '/home/andy/src/Google/panometa/' + ID
+
 for fileName in os.listdir(fileDir):
-    #print (fileName)
+    print (fileName)
     pass
 
 with open(fileDir + '/' + fileName) as data_file:    

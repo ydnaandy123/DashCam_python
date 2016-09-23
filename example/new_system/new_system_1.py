@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import numpy as np
 import sys
-sys.path.append('module')	# use the module under Module
+sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')	# use the module under Module
 import glumpy_setting
 import google_parse
 
