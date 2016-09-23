@@ -11,7 +11,7 @@ import json
 import base_process
 class StreetView3DRegion:
 	def __init__(self, fileID):    		
-		fname = '/home/andy/src/DashCam/json/newSystem_deep_match/' + fileID + '/fileMeta.json'
+		fname = '/home/andy/src/Google/panometa/' + fileID + '/fileMeta.json'
 		if os.path.isfile(fname) :
 			print ('Successfully find the existing region"' + fileID + '"(accroding to the fileMeta):')
 			with open(fname) as data_file:    

@@ -15,8 +15,8 @@ class PanoFetcher:
 		self.radius = radius	# Panorama's' size	
 
 	def fileDirExist(self, fileID):
-		if not os.path.exists('/home/andy/src/DashCam/json/newSystem_deep_match/' + fileID):
-			os.makedirs('/home/andy/src/DashCam/json/newSystem_deep_match/' + fileID)
+		if not os.path.exists('/home/andy/src/Google/panometa/' + fileID):
+			os.makedirs('/home/andy/src/Google/panometa/' + fileID)
 			return False
 		return True     	
 
@@ -34,20 +34,20 @@ class PanoFetcher:
 		for self.cur in range(0, maxPano):
     		# Get the pano accroding to the list 
 			img, pano_basic, panoId = self.getNewPanoMeta()
-			storeDir = '/home/andy/src/DashCam/json/newSystem_deep_match/' + fileID + '/' + panoId
+			storeDir = '/home/andy/src/Google/panometa/' + fileID + '/' + panoId
 			self.storePano(storeDir, pano_basic, img)
 			print self.cur, panoId
 		# Store
 		self.storeBFSMeta(fileID)
 	def storeBFSMeta(self, fileID):
-		with open('/home/andy/src/DashCam/json/newSystem_deep_match/' + fileID + '/fileMeta.json', 'w') as outfile:
+		with open('/home/andy/src/Google/panometa/' + fileID + '/fileMeta.json', 'w') as outfile:
 			fileMeta = {'panoList':self.panoList, 'cur':self.cur, 'id2GPS':self.panoDict}
 			print "id2GPS's length: %d" % len (self.panoDict)
 			print "panoList's length: %d" % len(self.panoList)
 			json.dump(fileMeta, outfile)
 			outfile.close()		
 	def BFS_aug(self, fileID, startGPS=None, maxPano=100):		
-		fname = '/home/andy/src/DashCam/json/newSystem_deep_match/' + fileID + '/fileMeta.json'
+		fname = '/home/andy/src/Google/panometa/' + fileID + '/fileMeta.json'
 		if os.path.isfile(fname) :
 			print 'Augment the existing region"' + fileID + '"(accroding to the fileMeta):'
 			# Initialize panoList, panoDict, panoSet, cur
@@ -64,7 +64,7 @@ class PanoFetcher:
 			for self.cur in range(cur + 0, cur + maxPano):
 				# Get the pano accroding to the list 
 				img, pano_basic, panoId = self.getNewPanoMeta()
-				storeDir = '/home/andy/src/DashCam/json/newSystem_deep_match/' + fileID + '/' + panoId
+				storeDir = '/home/andy/src/Google/panometa/' + fileID + '/' + panoId
 				self.storePano(storeDir, pano_basic, img)
 				print self.cur, panoId
 			# Store
@@ -121,7 +121,7 @@ class PanoFetcher:
 					except:
 						print pano.PanoId + ' lacks some important data.'
 						pano_basic = {}
-					storeDir = '/home/andy/src/DashCam/json/newSystem_deep_match/' + fileID + '/' + pano.PanoId
+					storeDir = '/home/andy/src/Google/panometa/' + fileID + '/' + pano.PanoId
 					self.storePano(storeDir, pano_basic, img)
 # Something I don't familiar
 # This object helps me a alot to parse the google data					
