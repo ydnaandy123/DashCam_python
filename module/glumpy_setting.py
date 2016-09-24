@@ -97,8 +97,8 @@ class Program:
         self.program['color'] = (1,0,0,1)
         self.program['color_sel'] = 1
         self.program['u_model'] = np.eye(4, dtype=np.float32)
-        self.program['u_view'] = glm.translation(0, 0, -200)
-        self.program['a_pointSize'] = 5   
+        self.program['u_view'] = glm.translation(0, 0, -50)
+        self.program['a_pointSize'] = 5
 
         app.run()
 

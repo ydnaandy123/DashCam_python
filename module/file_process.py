@@ -1,6 +1,5 @@
 #!/usr/bin/python2
 import json
-import os
 
 class DashCamFileProcessor:
     def __init__(self):
@@ -21,12 +20,12 @@ class DashCamFileProcessor:
     # return the non-repeat (lat, lon) pathPoint
     def getPath_info3d(self, fileID = None, fileIndex = None):
         if fileID != None:
-            print 'fileID: ' + fileID
+            print('fileID: ' + fileID)
             with open('/home/andy/src/DashCam/json/newSystem_deep_match/' + fileID + '/info_3d.json') as data_file:
                 info_3d = json.load(data_file)
                 data_file.close()
         elif fileIndex != None:
-            print 'fileIndex: ' + fileIndex
+            print('fileIndex: ' + fileIndex)
         pathPoint_set_info3d = set()
         for img, latlon in info_3d.items():
                 for latlon_element in latlon.keys():		

@@ -1,5 +1,9 @@
 import numpy as np
 
+print("The depthMap's size of id:%s is unusual:(%d, %d)"
+      % ('jhdf', 123, 456))
+
+'''
 B = np.array([[ -6.25916012e-03,   3.20910811e-01,   0.00000000e+00,
           4.66891289e+01],
        [ -2.26589158e-01,   5.09252548e-02,   0.00000000e+00,
@@ -27,3 +31,4 @@ testV = np.hstack((testV, 1))
 print (testV)
 testV = np.dot(A[0:3, 0:4], testV)
 print (testV)
+'''
