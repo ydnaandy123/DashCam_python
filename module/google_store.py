@@ -8,16 +8,21 @@ import json
 import os
 
 
-# Object can getch google's data
-# also deal with different pathPoints in various form
+"""
+Object can fetch google's data
+also deal with different pathPoints in various form
+"""
+storePath = '/home/andy/src/Google/panometa/'
+
+
 class PanoFetcher:
     def __init__(self, zoom=1, radius=30):
         self.zoom = zoom  # Get what pano
         self.radius = radius  # Panorama's' size
 
     def fileDirExist(self, fileID):
-        if not os.path.exists('/home/andy/src/Google/panometa/' + fileID):
-            os.makedirs('/home/andy/src/Google/panometa/' + fileID)
+        if not os.path.exists(storePath + fileID):
+            os.makedirs(storePath + fileID)
             return False
         return True
 
@@ -35,36 +40,31 @@ class PanoFetcher:
         for self.cur in range(0, maxPano):
             # Get the pano accroding to the list
             img, pano_basic, panoId = self.getNewPanoMeta()
-            storeDir = '/home/andy/src/Google/panometa/' + fileID + '/' + panoId
+            storeDir = storePath + fileID + '/' + panoId
             self.storePano(storeDir, pano_basic, img)
-            print
-            self.cur, panoId
+            print(self.cur, panoId)
         # Store
         self.storeBFSMeta(fileID)
 
     def storeBFSMeta(self, fileID):
-        with open('/home/andy/src/Google/panometa/' + fileID + '/fileMeta.json', 'w') as outfile:
+        with open(storePath + fileID + '/fileMeta.json', 'w') as outfile:
             fileMeta = {'panoList': self.panoList, 'cur': self.cur, 'id2GPS': self.panoDict}
-            print
-            "id2GPS's length: %d" % len(self.panoDict)
-            print
-            "panoList's length: %d" % len(self.panoList)
+            print("id2GPS's length: %d" % len(self.panoDict))
+            print("panoList's length: %d" % len(self.panoList))
             json.dump(fileMeta, outfile)
             outfile.close()
 
     def BFS_aug(self, fileID, startGPS=None, maxPano=100):
-        fname = '/home/andy/src/Google/panometa/' + fileID + '/fileMeta.json'
+        fname = storePath + fileID + '/fileMeta.json'
         if os.path.isfile(fname):
-            print
-            'Augment the existing region"' + fileID + '"(accroding to the fileMeta):'
+            print('Augment the existing region"' + fileID + '"(accroding to the fileMeta):')
             # Initialize panoList, panoDict, panoSet, cur
             with open(fname) as data_file:
                 fileMeta = json.load(data_file)
                 self.panoList = fileMeta['panoList']
                 cur = fileMeta['cur'] + 1
                 self.panoDict = fileMeta['id2GPS']
-                print
-                self.panoList, cur - 1
+                print(self.panoList, cur - 1)
                 self.panoSet = set(self.panoList)
                 self.cur = cur
                 data_file.close()
@@ -72,10 +72,9 @@ class PanoFetcher:
             for self.cur in range(cur + 0, cur + maxPano):
                 # Get the pano accroding to the list
                 img, pano_basic, panoId = self.getNewPanoMeta()
-                storeDir = '/home/andy/src/Google/panometa/' + fileID + '/' + panoId
+                storeDir = storePath + fileID + '/' + panoId
                 self.storePano(storeDir, pano_basic, img)
-                print
-                self.cur, panoId
+                print(self.cur, panoId)
             # Store
             self.storeBFSMeta(fileID)
         else:
@@ -90,8 +89,7 @@ class PanoFetcher:
             self.panoDict[pano.PanoId] = [pano.Lat, pano.Lon]
             img = getPanorama(pano.PanoId, zoom=self.zoom)
         except:
-            print
-            "Google what's worng with " + self.panoList[self.cur]
+            print("Google what's worng with " + self.panoList[self.cur])
         try:
             pano_basic = {'ProjectionPanoYawDeg': pano.ProjectionPanoYawDeg,
                           'AnnotationLinks': pano.AnnotationLinks, 'rawDepth': pano.rawDepth,
@@ -103,8 +101,7 @@ class PanoFetcher:
                     self.panoList.append(panoId)
                     self.panoSet.add(panoId)
         except:
-            print
-            pano.PanoId + ' lacks some important data.'
+            print(pano.PanoId + ' lacks some important data.')
             pano_basic = {}
         return img, pano_basic, pano.PanoId
 
@@ -118,16 +115,13 @@ class PanoFetcher:
         panoSet = set()
         fileID += '_info3d'
         if self.fileDirExist(fileID):
-            print
-            'This info_3d file already exists.'
+            print('This info_3d file already exists.')
         else:
-            print
-            'Create new info_3d panometa.'
+            print('Create new info_3d panometa.')
             for pathPoint in pathPoint_set_info3d:
                 [lat, lon] = pathPoint.split(',')
                 pano = getPanoramaMetadata(lat=lat, lon=lon, radius=self.radius)
-                print
-                lat, lon, pano.PanoId
+                print(lat, lon, pano.PanoId)
                 if pano.PanoId not in panoSet:
                     panoSet.add(pano.PanoId)
                     img = getPanorama(pano.PanoId, zoom=self.zoom)
@@ -137,10 +131,9 @@ class PanoFetcher:
                                       'AnnotationLinks': pano.AnnotationLinks, 'rawDepth': pano.rawDepth,
                                       'Text': pano.Text}
                     except:
-                        print
-                        pano.PanoId + ' lacks some important data.'
+                        print(pano.PanoId + ' lacks some important data.')
                         pano_basic = {}
-                    storeDir = '/home/andy/src/Google/panometa/' + fileID + '/' + pano.PanoId
+                    storeDir = storePath + fileID + '/' + pano.PanoId
                     self.storePano(storeDir, pano_basic, img)
 
 
@@ -253,7 +246,7 @@ def getPanorama(panoid, zoom):
 # zoom range is 0->NumZoomLevels inclusively
 # x/y range is 0->?
 def getPanoramaTile(panoid, zoom, x, y):
-    BaseUri = 'http://maps.google.com/cbk';
+    BaseUri = 'http://maps.google.com/cbk'
     url = '%s?'
     url += 'output=tile'  # tile output
     url += '&panoid=%s'  # panoid to retrieve
