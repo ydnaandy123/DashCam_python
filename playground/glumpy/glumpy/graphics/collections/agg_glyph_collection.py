@@ -172,7 +172,7 @@ class AggGlyphCollection(Collection):
         return vertices, indices
 
 
-    def view(self, transform, viewport=None):
+    def view(self, transform: object, viewport: object = None) -> object:
         """ Return a view on the collection using provided transform """
 
         return GlyphCollectionView(self, transform, viewport)
