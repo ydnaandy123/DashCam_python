@@ -70,9 +70,11 @@ class ProgramSV3D:
 
     def global_position(self, lat=0, lon=0, yaw=0):
         self.lat, self.lon, self.yaw = lat, lon, yaw
-        glm.rotate(self.u_model, yaw, 0, 0, 1)
-        #glm.rotate(self.u_model, -25.069551, 1, 0, 0)
-        #glm.rotate(self.u_model, 121.478812, 0, 1, 0)
+
+        glm.rotate(self.u_model, 180, 0, 1, 0)
+        glm.rotate(self.u_model, yaw, 0, 0, -1)
+        glm.rotate(self.u_model, lat, -1, 0, 0)
+        glm.rotate(self.u_model, lon, 0, 1, 0)
 
         #print(np.dot(model, model2))
         #print(np.dot(model2, model))

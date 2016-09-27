@@ -11,7 +11,6 @@ import json
 #
 import base_process
 
-
 storePath = '/home/andy/src/Google/panometa/'
 
 
@@ -76,6 +75,8 @@ class StreetView3D:
         self.panorama = panorama
         self.depthHeader, self.depthMapIndices, self.depthMapPlanes = {}, [], []
         self.depthMap, self.ptCLoudData = None, None
+        self.lat, self.lon, self.yaw = float(pano_meta['Lat']), float(pano_meta['Lon']), float(pano_meta['ProjectionPanoYawDeg'])
+        self.ecef = base_process.geo_2_ecef(self.lat, self.lon, 0)
 
         self.decode_depth_map(pano_meta['rawDepth'])
         if self.depthHeader['panoHeight'] != 256 or self.depthHeader['panoWidth'] != 512:
