@@ -50,7 +50,7 @@ class ProgramAxis():
 
 
 class ProgramSV3D:
-    def __init__(self, data=None, name='ProgramSV3D'):
+    def __init__(self, data=None, name='ProgramSV3D', point_size=1):
         data = data.view(gloo.VertexBuffer)
         program = gloo.Program(vertexPoint, fragmentSelect)
         program.bind(data)
@@ -59,7 +59,7 @@ class ProgramSV3D:
         program['color_sel'] = 1
         program['u_model'] = np.eye(4, dtype=np.float32)
         program['u_view'] = glm.translation(0, 0, -50)
-        program['a_pointSize'] = 5
+        program['a_pointSize'] = point_size
 
         self.name = name
         self.program = program
@@ -76,6 +76,8 @@ class ProgramSV3D:
         glm.rotate(self.u_model, lat, -1, 0, 0)
         glm.rotate(self.u_model, lon, 0, 1, 0)
 
+    def offset_position(self, ecef):
+        glm.translate(self.u_model, ecef[1], ecef[2], ecef[0])
         #print(np.dot(model, model2))
         #print(np.dot(model2, model))
         #print(self.u_model)
@@ -88,7 +90,7 @@ class GpyWindow:
         window = app.Window(1024, 1024, color=(0, 0, 0, 1))
         framebuffer = np.zeros((window.height, window.width * 3), dtype=np.uint8)
 
-        self.deg_x, self.deg_y, self.size, self.zoom, self.radius = 0, 0, 1, -200, 200
+        self.deg_x, self.deg_y, self.mov_x, self.mov_y, self.size, self.zoom, self.radius = 0, 0, 0, 0, 1, -200, 200
         self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
             4, dtype=np.float32)
 
@@ -127,8 +129,12 @@ class GpyWindow:
 
         @window.event
         def on_mouse_drag(x, y, dx, dy, button):
-            self.deg_y += dy  # degrees
-            self.deg_x += dx  # degrees
+            if button == 2:
+                self.deg_y += dy  # degrees
+                self.deg_x += dx  # degrees
+            elif button == 8:
+                self.mov_y += dy/10  # degrees
+                self.mov_x += dx/10  # degrees
 
         @window.event
         def on_key_press(symbol, modifiers):
@@ -168,7 +174,7 @@ class GpyWindow:
             glm.scale(model, self.size, self.size, self.size)
             glm.rotate(model, self.deg_y, 1, 0, 0)
             glm.rotate(model, self.deg_x, 0, 1, 0)
-            # glm.translate(model, -self.deg_x/100, -self.deg_y/100, 0)
+            glm.translate(model, self.mov_x, -self.mov_y, 0)
             # model[3,3] = 1
             return model
 
