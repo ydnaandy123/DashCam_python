@@ -15,7 +15,7 @@ import base_process
 storePath = '/home/andy/src/Google/panometa/'
 
 
-class StreetView3DRegion:
+class StreetView3DRegionnnn:
     def __init__(self, fileID):
         fname = '/home/andy/src/Google/panometa/' + fileID + '/fileMeta.json'
         if os.path.isfile(fname):
@@ -45,13 +45,18 @@ class StreetView3DRegion:
 class StreetView3DRegion:
     def __init__(self, region_id):
         self.regionId = region_id
-        self.dataDir = os.path.join(storePath, ID)
+        self.dataDir = os.path.join(storePath, self.regionId)
         self.metaDir = os.path.join(self.dataDir, "fileMeta.json")
         with open(self.metaDir) as meta_file:
             self.fileMeta = json.load(meta_file)
             meta_file.close()
 
-        self.StreetView3D_Region = {}
+        # All the google depth maps seem to be store
+        # as this size(256, 512), at least what I've seen
+        self.sphericalRay = create_spherical_ray(256, 512)
+
+        self.sv3D_list = []
+        self.create_region()
 
     def create_region(self):
         for panoId in self.fileMeta['id2GPS']:
@@ -59,9 +64,11 @@ class StreetView3DRegion:
             panorama = scipy.misc.imread(pano_id_dir + '.jpg').astype(np.float)
             with open(pano_id_dir + '.json') as data_file:
                 pano_meta = json.load(data_file)
-                sv3D = StreetView3D(pano_meta, panorama)
-                self.StreetView3D_Region
+                sv3d = StreetView3D(pano_meta, panorama)
+                sv3d.create_ptcloud(self.sphericalRay)
+                self.sv3D_list.append(sv3d)
                 data_file.close()
+
 
 class StreetView3D:
     def __init__(self, pano_meta, panorama):

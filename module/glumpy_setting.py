@@ -4,9 +4,8 @@ from glumpy import app, gloo, gl, glm
 from glumpy.ext import png
 
 
-class ProgramAxis:
+class ProgramAxis():
     def __init__(self, data=None, name='ProgramAxis', line_length=1, arrow_size=2, geometry_size=1):
-        self.data, self.name = data, name
         program = gloo.Program(vertexSimple, fragmentSimple)
         axis = np.array([[-10, 0, 0], [10, 0, 0],
                          [0, -10, 0], [0, 10, 0],
@@ -43,8 +42,7 @@ class ProgramAxis:
                                        [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0], [0, 1, 0],
                                        [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1], [0, 0, 1],])
 
-        program['u_view'] = glm.translation(0, 0, -50)
-
+        self.data, self.name = data, name
         self.program = program
         self.draw_mode = gl.GL_LINES
         self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
@@ -69,9 +67,10 @@ class ProgramSV3D:
         self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
             4, dtype=np.float32)
 
-        model = glm.rotate(np.eye(4, dtype=np.float32), -25.069551, 1, 0, 0)
-        model2 = glm.rotate(np.eye(4, dtype=np.float32), 121.478812, 0, 1, 0)
-        #self.u_model = glm.rotate(model, 121.478812, 0, 1, 0)
+
+        glm.rotate(self.u_model, -25.069551, 1, 0, 0)
+        glm.rotate(self.u_model, 121.478812, 0, 1, 0)
+
 
         #print(np.dot(model, model2))
         #print(np.dot(model2, model))
@@ -94,20 +93,13 @@ class GpyWindow:
         @window.event
         def on_draw(dt):
             window.clear()
-            self.u_model = matrix_model()
             for program_object in self.programs:
                 program = program_object.program
-                if program_object.name == '1ProgramAxis':
-                    program['u_model'] = program_object.u_model
-                else:
-                    model = np.copy(program_object.u_model)
-                    glm.scale(model, self.size, self.size, self.size)
-                    glm.rotate(model, self.deg_y, 1, 0, 0)
-                    glm.rotate(model, self.deg_x, 0, 1, 0)
-                    program['u_model'] = model
-                    #program['u_model'] = np.dot(self.u_model, program_object.u_model)
 
-                program['u_view'] = self.u_view #np.dot(self.u_view, program_object.u_model)
+                model = matrix_model(np.copy(program_object.u_model))
+                program['u_model'] = model
+
+                program['u_view'] = self.u_view
                 program['u_projection'] = self.u_projection
                 program.draw(program_object.draw_mode)
 
@@ -168,8 +160,7 @@ class GpyWindow:
             # self.program['color_sel'] = 1 - self.program['color_sel']
             '''
 
-        def matrix_model():
-            model = np.eye(4, dtype=np.float32)
+        def matrix_model(model):
             glm.scale(model, self.size, self.size, self.size)
             glm.rotate(model, self.deg_y, 1, 0, 0)
             glm.rotate(model, self.deg_x, 0, 1, 0)
@@ -180,7 +171,8 @@ class GpyWindow:
     def add_program(self, program):
         self.programs.append(program)
 
-    def run(self):
+    @staticmethod
+    def run():
         app.run()
 
 

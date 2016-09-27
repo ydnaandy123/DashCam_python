@@ -21,10 +21,10 @@ if os.path.exists(metaDir):
     with open(metaDir) as meta_file:
         fileMeta = json.load(meta_file)
         for panoId in fileMeta['id2GPS']:
-            print(panoId)
-            if panoId != 'ny852t6BX7kEExOQ5APm6A':
-                continue
-            print(panoId)
+            #print(panoId)
+            #if panoId != 'ny852t6BX7kEExOQ5APm6A':
+            #    continue
+            #print(panoId)
             panoIdDir = os.path.join(dataDir, panoId)
             panorama = scipy.misc.imread(panoIdDir + '.jpg').astype(np.float)
             with open(panoIdDir + '.json') as data_file:
