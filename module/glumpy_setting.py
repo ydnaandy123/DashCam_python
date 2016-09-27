@@ -59,18 +59,20 @@ class ProgramSV3D:
         program['color_sel'] = 1
         program['u_model'] = np.eye(4, dtype=np.float32)
         program['u_view'] = glm.translation(0, 0, -50)
-        program['a_pointSize'] = 1
+        program['a_pointSize'] = 5
 
         self.name = name
         self.program = program
         self.draw_mode = gl.GL_POINTS
         self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
             4, dtype=np.float32)
+        self.lat, self.lon, self.yaw = 0, 0, 0
 
-
-        glm.rotate(self.u_model, -25.069551, 1, 0, 0)
-        glm.rotate(self.u_model, 121.478812, 0, 1, 0)
-
+    def global_position(self, lat=0, lon=0, yaw=0):
+        self.lat, self.lon, self.yaw = lat, lon, yaw
+        glm.rotate(self.u_model, yaw, 0, 0, 1)
+        #glm.rotate(self.u_model, -25.069551, 1, 0, 0)
+        #glm.rotate(self.u_model, 121.478812, 0, 1, 0)
 
         #print(np.dot(model, model2))
         #print(np.dot(model2, model))

@@ -119,26 +119,27 @@ class StreetView3D:
                 plane_index = self.depthMapIndices[h * width + w]
                 plane = self.depthMapPlanes[plane_index]
                 if (v[h, w, :].dot(np.array([plane['nx'], plane['ny'], plane['nz']]))) == 0:
-                    depth = -np.inf
+                    depth = np.inf
                 else:
-                    depth = plane['d'] / v[h, w, :].dot(np.array([plane['nx'], plane['ny'], plane['nz']]))
+                    depth = -plane['d'] / v[h, w, :].dot(np.array([plane['nx'], plane['ny'], plane['nz']]))
                 depth_map[h][w] = depth
                 data[h][w]['a_position'] = depth * v[h, w, :]
         self.depthMap = depth_map
         self.ptCLoudData = data
+        self.fix_sperical_inside_out()
 
     def create_ptcloud(self, v):
         height, width = self.depthHeader['panoHeight'], self.depthHeader['panoWidth']
         plane_indices = np.array(self.depthMapIndices)
         depth_map = np.zeros((height * width), dtype=np.float32)
-        depth_map[np.nonzero(plane_indices == 0)] = -np.inf
+        depth_map[np.nonzero(plane_indices == 0)] = np.inf
         v = v.reshape((height * width, 3))
 
         # index == 0 refers to the sky
         for i in range(1, self.depthHeader['numPlanes']):
             plane = self.depthMapPlanes[i]
             p_depth = np.ones((height * width)) * plane['d']
-            depth = p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
+            depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
             depth_map[np.nonzero(plane_indices == i)] = depth[np.nonzero(plane_indices == i)]
 
         panorama = scipy.misc.imresize(self.panorama, (height, width), interp='bilinear', mode=None)
@@ -148,11 +149,15 @@ class StreetView3D:
         data['a_color'] = np.array(panorama) / 255
         self.depthMap = depth_map.reshape((height, width))
         self.ptCLoudData = data
+        self.fix_sperical_inside_out()
+
+    def fix_sperical_inside_out(self):
+        self.ptCLoudData['a_position'][:, :, 1] = -self.ptCLoudData['a_position'][:, :, 1]
 
     def show_depth(self):
         # The further, the brighter
         # Inverse to inside-out
-        depth_map = -self.depthMap * 255 / 50
+        depth_map = self.depthMap * 255 / 50
         depth_map[np.nonzero(np.isinf(depth_map))] = 255
         depth_map[np.nonzero(depth_map > 255)] = 255
         depth_map /= 255
