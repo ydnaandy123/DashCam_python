@@ -148,6 +148,33 @@ class PanoFetcher:
                 json.dump(file_meta, outfile)
                 outfile.close()
 
+    def info_bfs(self, file_id):
+        file_id += '_info3d'
+        file_name = storePath + file_id + '/fileMeta.json'
+        if os.path.isfile(file_name):
+            print('Augment the existing region"' + file_id + '"(according to the fileMeta):')
+            # Initialize panoList, panoDict, panoSet, cur
+            with open(file_name) as data_file:
+                file_meta = json.load(data_file)
+                self.panoList = file_meta['panoList']
+                cur = file_meta['cur'] + 1
+                self.panoDict = file_meta['id2GPS']
+                print(self.panoList, cur - 1)
+                self.panoSet = set(self.panoList)
+                self.cur = cur
+                data_file.close()
+            # Until maximum
+            for self.cur in range(cur + 0, cur + max_pano):
+                # Get the pano accroding to the list
+                img, pano_basic, pano_id = self.get_new_pano_meta()
+                store_dir = storePath + file_id + '/' + pano_id
+                self.store_pano(store_dir, pano_basic, img)
+                print(self.cur, pano_id)
+            # Store
+            self.store_bfs_meta(file_id)
+        else:
+            print('The region "' + file_id + '" has not created yet.')
+            return
 
 # Something I don't familiar
 # This object helps me a alot to parse the google data					
