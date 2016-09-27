@@ -20,111 +20,118 @@ class PanoFetcher:
         self.zoom = zoom  # Get what pano
         self.radius = radius  # Panorama's' size
 
-    def fileDirExist(self, fileID):
-        if not os.path.exists(storePath + fileID):
-            os.makedirs(storePath + fileID)
+        self.panoSet, self.panoList, self.panoDict, self.cur = set(), [], {}, 0
+
+    @staticmethod
+    def file_dir_exist(file_id):
+        if not os.path.exists(storePath + file_id):
+            os.makedirs(storePath + file_id)
             return False
         return True
 
-    def BFS(self, fileID, startGPS, maxPano=100):
-        self.fileDirExist(fileID)
+    @staticmethod
+    def store_pano(store_dir, pano_basic, img):
+        with open(store_dir + '.json', 'w') as outfile:
+            json.dump(pano_basic, outfile)
+            outfile.close()
+        cv2.imwrite(store_dir + '.jpg', img)
+
+    def store_bfs_meta(self, file_id):
+        with open(storePath + file_id + '/fileMeta.json', 'w') as outfile:
+            file_meta = {'panoList': self.panoList, 'cur': self.cur, 'id2GPS': self.panoDict}
+            print("id2GPS's length: %d" % len(self.panoDict))
+            print("panoList's length: %d" % len(self.panoList))
+            json.dump(file_meta, outfile)
+            outfile.close()
+
+    def get_new_pano_meta(self):
+        img, pano_basic, pano = None, None, None
+        try:  # THIS is so serious
+            pano = get_panorama_metadata(panoid=self.panoList[self.cur], radius=self.radius)
+            self.panoDict[pano.PanoId] = [pano.Lat, pano.Lon]
+            img = get_panorama(pano.PanoId, zoom=self.zoom)
+            try:
+                pano_basic = {'panoId': pano.PanoId, 'Lat': pano.Lat,
+                              'Lon': pano.Lon, 'ProjectionPanoYawDeg': pano.ProjectionPanoYawDeg,
+                              'AnnotationLinks': pano.AnnotationLinks, 'rawDepth': pano.rawDepth,
+                              'Text': pano.Text}
+                # Add new founded panos into the list
+                for link in pano.AnnotationLinks:
+                    if (link['PanoId'] not in self.panoSet):
+                        pano_id = link['PanoId']
+                        self.panoList.append(pano_id)
+                        self.panoSet.add(pano_id)
+            except:
+                print(pano.PanoId + ' lacks some important data.')
+                pano_basic = {}
+        except:
+            print("Google what's worng with " + self.panoList[self.cur])
+        return img, pano_basic, pano.PanoId
+
+    def bfs(self, file_id, start_gps, max_pano=100):
+        self.file_dir_exist(file_id)
         # Initialize panoList, panoDict, panoSet, cur
         self.panoSet, self.panoList, self.panoDict, self.cur = set(), [], {}, 0
         # Change the GPS to panoID
-        # and put fisrt panoID into the list
-        (lat, lon) = startGPS
-        pano = getPanoramaMetadata(lat=lat, lon=lon, radius=self.radius)
+        # and put first panoID into the list
+        (lat, lon) = start_gps
+        pano = get_panorama_metadata(lat=lat, lon=lon, radius=self.radius)
         self.panoSet.add(pano.PanoId)
         self.panoList.append(pano.PanoId)
         # Until maximum
-        for self.cur in range(0, maxPano):
-            # Get the pano accroding to the list
-            img, pano_basic, panoId = self.getNewPanoMeta()
-            storeDir = storePath + fileID + '/' + panoId
-            self.storePano(storeDir, pano_basic, img)
-            print(self.cur, panoId)
+        for self.cur in range(0, max_pano):
+            # Get the pano according to the list
+            img, pano_basic, pano_id = self.get_new_pano_meta()
+            store_dir = storePath + file_id + '/' + pano_id
+            self.store_pano(store_dir, pano_basic, img)
+            print(self.cur, pano_id)
         # Store
-        self.storeBFSMeta(fileID)
+        self.store_bfs_meta(file_id)
 
-    def storeBFSMeta(self, fileID):
-        with open(storePath + fileID + '/fileMeta.json', 'w') as outfile:
-            fileMeta = {'panoList': self.panoList, 'cur': self.cur, 'id2GPS': self.panoDict}
-            print("id2GPS's length: %d" % len(self.panoDict))
-            print("panoList's length: %d" % len(self.panoList))
-            json.dump(fileMeta, outfile)
-            outfile.close()
-
-    def BFS_aug(self, fileID, startGPS=None, maxPano=100):
-        fname = storePath + fileID + '/fileMeta.json'
-        if os.path.isfile(fname):
-            print('Augment the existing region"' + fileID + '"(accroding to the fileMeta):')
+    def bfs_aug(self, file_id, start_gps=None, max_pano=100):
+        file_name = storePath + file_id + '/fileMeta.json'
+        if os.path.isfile(file_name):
+            print('Augment the existing region"' + file_id + '"(according to the fileMeta):')
             # Initialize panoList, panoDict, panoSet, cur
-            with open(fname) as data_file:
-                fileMeta = json.load(data_file)
-                self.panoList = fileMeta['panoList']
-                cur = fileMeta['cur'] + 1
-                self.panoDict = fileMeta['id2GPS']
+            with open(file_name) as data_file:
+                file_meta = json.load(data_file)
+                self.panoList = file_meta['panoList']
+                cur = file_meta['cur'] + 1
+                self.panoDict = file_meta['id2GPS']
                 print(self.panoList, cur - 1)
                 self.panoSet = set(self.panoList)
                 self.cur = cur
                 data_file.close()
             # Until maximum
-            for self.cur in range(cur + 0, cur + maxPano):
+            for self.cur in range(cur + 0, cur + max_pano):
                 # Get the pano accroding to the list
-                img, pano_basic, panoId = self.getNewPanoMeta()
-                storeDir = storePath + fileID + '/' + panoId
-                self.storePano(storeDir, pano_basic, img)
-                print(self.cur, panoId)
+                img, pano_basic, pano_id = self.get_new_pano_meta()
+                store_dir = storePath + file_id + '/' + pano_id
+                self.store_pano(store_dir, pano_basic, img)
+                print(self.cur, pano_id)
             # Store
-            self.storeBFSMeta(fileID)
+            self.store_bfs_meta(file_id)
         else:
-            print
-            'Create the region "' + fileID + '" first time.(Or lacking the fileMeta):'
-            self.BFS(fileID, startGPS, maxPano)
+            print('Create the region "' + file_id + '" first time.(Or lacking the fileMeta):')
+            self.bfs(file_id, start_gps, max_pano)
             return
 
-    def getNewPanoMeta(self):
-        try:  # THIS is so serious
-            pano = getPanoramaMetadata(panoid=self.panoList[self.cur], radius=self.radius)
-            self.panoDict[pano.PanoId] = [pano.Lat, pano.Lon]
-            img = getPanorama(pano.PanoId, zoom=self.zoom)
-        except:
-            print("Google what's worng with " + self.panoList[self.cur])
-        try:
-            pano_basic = {'ProjectionPanoYawDeg': pano.ProjectionPanoYawDeg,
-                          'AnnotationLinks': pano.AnnotationLinks, 'rawDepth': pano.rawDepth,
-                          'Text': pano.Text}
-            # Add new founded panos into the list
-            for link in pano.AnnotationLinks:
-                if (link['PanoId'] not in self.panoSet):
-                    panoId = link['PanoId']
-                    self.panoList.append(panoId)
-                    self.panoSet.add(panoId)
-        except:
-            print(pano.PanoId + ' lacks some important data.')
-            pano_basic = {}
-        return img, pano_basic, pano.PanoId
-
-    def storePano(self, storeDir, pano_basic, img):
-        with open(storeDir + '.json', 'w') as outfile:
-            json.dump(pano_basic, outfile)
-            outfile.close()
-        cv2.imwrite(storeDir + '.jpg', img)
-
-    def info_3d(self, fileID, pathPoint_set_info3d):
-        panoSet = set()
-        fileID += '_info3d'
-        if self.fileDirExist(fileID):
+    def info_3d(self, file_id, path_point_set_info3d):
+        pano_set, id_2_gps, info_2_id = set(), {}, {}
+        file_id += '_info3d'
+        if self.file_dir_exist(file_id):
             print('This info_3d file already exists.')
         else:
             print('Create new info_3d panometa.')
-            for pathPoint in pathPoint_set_info3d:
+            for pathPoint in path_point_set_info3d:
                 [lat, lon] = pathPoint.split(',')
-                pano = getPanoramaMetadata(lat=lat, lon=lon, radius=self.radius)
+                pano = get_panorama_metadata(lat=lat, lon=lon, radius=self.radius)
                 print(lat, lon, pano.PanoId)
-                if pano.PanoId not in panoSet:
-                    panoSet.add(pano.PanoId)
-                    img = getPanorama(pano.PanoId, zoom=self.zoom)
+                info_2_id[pathPoint] = pano.PanoId
+                id_2_gps[pano.PanoId] = [pano.Lat, pano.Lon]
+                if pano.PanoId not in pano_set:
+                    pano_set.add(pano.PanoId)
+                    img = get_panorama(pano.PanoId, zoom=self.zoom)
                     try:
                         pano_basic = {'panoId': pano.PanoId, 'Lat': pano.Lat,
                                       'Lon': pano.Lon, 'ProjectionPanoYawDeg': pano.ProjectionPanoYawDeg,
@@ -133,8 +140,13 @@ class PanoFetcher:
                     except:
                         print(pano.PanoId + ' lacks some important data.')
                         pano_basic = {}
-                    storeDir = storePath + fileID + '/' + pano.PanoId
-                    self.storePano(storeDir, pano_basic, img)
+                    store_dir = storePath + file_id + '/' + pano.PanoId
+                    self.store_pano(store_dir, pano_basic, img)
+            with open(storePath + file_id + '/fileMeta.json', 'w') as outfile:
+                file_meta = {'info2ID': info_2_id, 'id2GPS': id_2_gps}
+                print("id2GPS's length: %d" % len(id_2_gps))
+                json.dump(file_meta, outfile)
+                outfile.close()
 
 
 # Something I don't familiar
@@ -185,11 +197,10 @@ class PanoramaMetadata:
             if len(tmp) > 0:
                 self.rawDepth = tmp[0].content
         except:
-            print
-            self.PanoId + 'has some problem.'
+            print(self.PanoId + 'has some problem.')
 
 
-def getUrlContents(url):
+def get_url_contents(url):
     f = urllib2.urlopen(url)
     data = f.read()
     f.close()
@@ -198,38 +209,29 @@ def getUrlContents(url):
 
 # panoid is the value from panorama metadata
 # OR: supply lat/lon/radius to find the nearest pano to lat/lon within radius
-def getPanoramaMetadata(panoid=None, lat=None, lon=None, radius=30):
-    BaseUri = 'http://maps.google.com/cbk';
+def get_panorama_metadata(panoid=None, lat=None, lon=None, radius=30):
+    base_uri = 'http://maps.google.com/cbk'
     url = '%s?'
     url += 'output=xml'  # metadata output
     url += '&v=4'  # version
     url += '&dm=1'  # include depth map
     url += '&pm=1'  # include pano map
-    if panoid == None:
+    if panoid is None:
         url += '&ll=%s,%s'  # lat/lon to search at
         url += '&radius=%s'  # search radius
-        url = url % (BaseUri, lat, lon, radius)
+        url = url % (base_uri, lat, lon, radius)
     else:
         url += '&panoid=%s'  # panoid to retrieve
-        url = url % (BaseUri, panoid)
+        url = url % (base_uri, panoid)
 
-    findpanoxml = getUrlContents(url)
+    findpanoxml = get_url_contents(url)
     if not findpanoxml.find('data_properties'):
         return None
     return PanoramaMetadata(libxml2.parseDoc(findpanoxml))
 
-    def __str__(self):
-        tmp = ''
-        for x in inspect.getmembers(self):
-            if x[0].startswith("__") or inspect.ismethod(x[1]):
-                continue
-
-            tmp += "%s: %s\n" % x
-        return tmp
-
 
 # h_base, w_base should be renamed...
-def getPanorama(panoid, zoom):
+def get_panorama(panoid, zoom):
     h = pow(2, zoom - 1)
     w = pow(2, zoom)
     h_base = 416
@@ -237,7 +239,7 @@ def getPanorama(panoid, zoom):
     panorama = np.zeros((h * w_base, w * w_base, 3), dtype="uint8")
     for y in range(0, h):
         for x in range(0, w):
-            img = getPanoramaTile(panoid, zoom, x, y)
+            img = get_panorama_tile(panoid, zoom, x, y)
             panorama[y * w_base:y * w_base + w_base, x * w_base:x * w_base + w_base, :] = img[0:w_base, 0:w_base, :]
     return panorama[0:h * h_base, 0:w * h_base, :]
 
@@ -245,8 +247,8 @@ def getPanorama(panoid, zoom):
 # panoid is the value from the panorama metadata
 # zoom range is 0->NumZoomLevels inclusively
 # x/y range is 0->?
-def getPanoramaTile(panoid, zoom, x, y):
-    BaseUri = 'http://maps.google.com/cbk'
+def get_panorama_tile(panoid, zoom, x, y):
+    base_uri = 'http://maps.google.com/cbk'
     url = '%s?'
     url += 'output=tile'  # tile output
     url += '&panoid=%s'  # panoid to retrieve
@@ -257,7 +259,7 @@ def getPanoramaTile(panoid, zoom, x, y):
     url += '&onerr=3'  # ???
     url += '&renderer=spherical'  # standard speherical projection
     url += '&v=4'  # version
-    url = url % (BaseUri, panoid, zoom, x, y)
+    url = url % (base_uri, panoid, zoom, x, y)
     return url_to_image(url)
 
 

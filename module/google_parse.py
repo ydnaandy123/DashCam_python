@@ -12,6 +12,9 @@ import json
 import base_process
 
 
+storePath = '/home/andy/src/Google/panometa/'
+
+
 class StreetView3DRegion:
     def __init__(self, fileID):
         fname = '/home/andy/src/Google/panometa/' + fileID + '/fileMeta.json'
@@ -38,6 +41,27 @@ class StreetView3DRegion:
         self.topology = data
         return data
 
+
+class StreetView3DRegion:
+    def __init__(self, region_id):
+        self.regionId = region_id
+        self.dataDir = os.path.join(storePath, ID)
+        self.metaDir = os.path.join(self.dataDir, "fileMeta.json")
+        with open(self.metaDir) as meta_file:
+            self.fileMeta = json.load(meta_file)
+            meta_file.close()
+
+        self.StreetView3D_Region = {}
+
+    def create_region(self):
+        for panoId in self.fileMeta['id2GPS']:
+            pano_id_dir = os.path.join(self.dataDir, panoId)
+            panorama = scipy.misc.imread(pano_id_dir + '.jpg').astype(np.float)
+            with open(pano_id_dir + '.json') as data_file:
+                pano_meta = json.load(data_file)
+                sv3D = StreetView3D(pano_meta, panorama)
+                self.StreetView3D_Region
+                data_file.close()
 
 class StreetView3D:
     def __init__(self, pano_meta, panorama):
@@ -120,6 +144,7 @@ class StreetView3D:
 
     def show_depth(self):
         # The further, the brighter
+        # Inverse to inside-out
         depth_map = -self.depthMap * 255 / 50
         depth_map[np.nonzero(np.isinf(depth_map))] = 255
         depth_map[np.nonzero(depth_map > 255)] = 255

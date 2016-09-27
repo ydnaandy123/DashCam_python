@@ -52,7 +52,7 @@ class ProgramAxis:
 
 
 class ProgramSV3D:
-    def __init__(self, data=None):
+    def __init__(self, data=None, name='ProgramSV3D'):
         data = data.view(gloo.VertexBuffer)
         program = gloo.Program(vertexPoint, fragmentSelect)
         program.bind(data)
@@ -63,10 +63,19 @@ class ProgramSV3D:
         program['u_view'] = glm.translation(0, 0, -50)
         program['a_pointSize'] = 1
 
+        self.name = name
         self.program = program
         self.draw_mode = gl.GL_POINTS
         self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
             4, dtype=np.float32)
+
+        model = glm.rotate(np.eye(4, dtype=np.float32), -25.069551, 1, 0, 0)
+        model2 = glm.rotate(np.eye(4, dtype=np.float32), 121.478812, 0, 1, 0)
+        #self.u_model = glm.rotate(model, 121.478812, 0, 1, 0)
+
+        #print(np.dot(model, model2))
+        #print(np.dot(model2, model))
+        #print(self.u_model)
 
 
 class GpyWindow:
@@ -88,8 +97,17 @@ class GpyWindow:
             self.u_model = matrix_model()
             for program_object in self.programs:
                 program = program_object.program
-                program['u_model'] = self.u_model
-                program['u_view'] = np.dot(self.u_view, program_object.u_model)
+                if program_object.name == '1ProgramAxis':
+                    program['u_model'] = program_object.u_model
+                else:
+                    model = np.copy(program_object.u_model)
+                    glm.scale(model, self.size, self.size, self.size)
+                    glm.rotate(model, self.deg_y, 1, 0, 0)
+                    glm.rotate(model, self.deg_x, 0, 1, 0)
+                    program['u_model'] = model
+                    #program['u_model'] = np.dot(self.u_model, program_object.u_model)
+
+                program['u_view'] = self.u_view #np.dot(self.u_view, program_object.u_model)
                 program['u_projection'] = self.u_projection
                 program.draw(program_object.draw_mode)
 
