@@ -54,7 +54,7 @@ class StreetView3DRegion:
         # as this size(256, 512), at least what I've seen
         self.sphericalRay = create_spherical_ray(256, 512)
 
-        self.sv3D_list = []
+        self.sv3D_Dict = {}
         self.create_region()
 
     def create_region(self):
@@ -65,7 +65,7 @@ class StreetView3DRegion:
                 pano_meta = json.load(data_file)
                 sv3d = StreetView3D(pano_meta, panorama)
                 sv3d.create_ptcloud(self.sphericalRay)
-                self.sv3D_list.append(sv3d)
+                self.sv3D_Dict[panoId] = sv3d
                 data_file.close()
 
 
@@ -82,6 +82,8 @@ class StreetView3D:
         if self.depthHeader['panoHeight'] != 256 or self.depthHeader['panoWidth'] != 512:
             print("The depthMap's size of id:%s is unusual: (%d, %d)"
                   % (self.panoMeta['panoId'], self.depthHeader['panoHeight'], self.depthHeader['panoWidth']))
+
+        self.matrix_offs = np.eye(4, dtype=np.float32)
 
     def decode_depth_map(self, raw):
         raw = zlib.decompress(base64.urlsafe_b64decode(raw + self.make_padding(raw)))
@@ -133,7 +135,7 @@ class StreetView3D:
         height, width = self.depthHeader['panoHeight'], self.depthHeader['panoWidth']
         plane_indices = np.array(self.depthMapIndices)
         depth_map = np.zeros((height * width), dtype=np.float32)
-        depth_map[np.nonzero(plane_indices == 0)] = np.inf
+        depth_map[np.nonzero(plane_indices == 0)] = np.nan
         v = v.reshape((height * width, 3))
 
         # index == 0 refers to the sky

@@ -1,40 +1,62 @@
+# -----------------------------------------------------------------------------
+# Copyright (c) 2009-2016 Nicolas P. Rougier. All rights reserved.
+# Distributed under the (new) BSD License.
+# -----------------------------------------------------------------------------
+import triangle
+from scipy.spatial import Delaunay
+from glumpy import app, gl, gloo
 import numpy as np
+from glumpy.geometry import colorcube
 
-m4 = np.array([[-0.52218324,  0., -0.85283333,  0.        ],
- [-0.36136094,  0.90579408,  0.22125851,  0.        ],
- [ 0.7724914,   0.42371812, -0.47299048,  0.        ],
- [ 0.,          0.,          0.,          1.        ]])
+position = np.array([(-0.8, -1.2), (-1.4, +0.5), (0, 1.2), (+1.4, +0.5), (+0.8, -1.2)])
+color = np.array([[1, 0, 0], [0, 1, 0], [1, 1, 1], [0, 0, 1], [1, 1, 0]])
 
-m3 = m4[0:3, 0:3]
-print(m3)
-print(m3.shape)
+#tri = Delaunay(position)
 
-'''
-B = np.array([[ -6.25916012e-03,   3.20910811e-01,   0.00000000e+00,
-          4.66891289e+01],
-       [ -2.26589158e-01,   5.09252548e-02,   0.00000000e+00,
-          2.87899723e+01],
-       [  0.00000000e+00,   0.00000000e+00,   1.21887244e-01,
-          1.63451672e-01], 
-          [0, 0, 0, 1]])
 
-print (B)
+triDict = {'vertices': position}
+pp = triangle.triangulate(triDict)
 
-A = np.array([[-0.47995195,  0.41581649,  0.77249128,  0.        ],
-       [ 0.87729245,  0.22544707,  0.42371172,  0.        ],
-       [ 0.00203044,  0.88106203, -0.47299644,  0.        ],
-       [0 , 0, 0, 1]])
-#A = np.transpose(A)
 
-print (A)
+tri = np.array(triangle.triangulate(triDict), dtype=np.uint32)
+tri = tri.view(gloo.IndexBuffer)
 
-testV = np.array([-72.74919557543679, 14.43233202405186, 1.194673749553661e-15, 1])
+vertices, faces, outline = colorcube()
 
-print (testV)
-testV = np.dot(B[0:3, 0:4], testV)
-print (testV)
-testV = np.hstack((testV, 1))
-print (testV)
-testV = np.dot(A[0:3, 0:4], testV)
-print (testV)
-'''
+vertex = """
+attribute vec2 a_position;
+attribute vec3 a_color;
+varying vec3 v_color;
+void main (void)
+{
+    gl_Position = vec4(0.65*a_position, 0.0, 1.0);
+    gl_PointSize = 50;
+    v_color = a_color;
+}
+"""
+
+fragmentSimple = """
+varying vec3 v_color;
+void main()
+{
+    gl_FragColor = vec4(v_color, 1.0);
+}
+"""
+
+window = app.Window(width=800, height=800)
+
+@window.event
+def on_draw(dt):
+    window.clear()
+
+    gl.glDisable(gl.GL_BLEND)
+    gl.glEnable(gl.GL_DEPTH_TEST)
+    gl.glEnable(gl.GL_POLYGON_OFFSET_FILL)
+
+    quad.draw(gl.GL_TRIANGLE_STRIP, indices=tri)
+    #quad.draw(gl.GL_TRIANGLE_STRIP, program_object.face)
+
+quad = gloo.Program(vertex, fragmentSimple)
+quad['a_position'] = position
+quad['a_color'] = color
+app.run()

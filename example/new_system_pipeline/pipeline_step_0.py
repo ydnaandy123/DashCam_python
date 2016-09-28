@@ -1,7 +1,7 @@
 #!/usr/bin/python2
 # ==============================================================
-# Showing how to require and store a 'large area' panaMeta from google
-# accroding to the Dashcam 'info_3d'
+# Step.0
+# Fetch the Google data
 # ==============================================================
 import sys
 
@@ -17,11 +17,12 @@ panoFetcher = google_store.PanoFetcher(zoom, radius)
 dashCamFileProcess = file_process.DashCamFileProcessor()
 
 # Select one of the fileName among the 50 selected files
-for i in range(5, 6):
+for i in range(50):
 
     index = i
     fileID = str(dashCamFileProcess.list50[index][1])
     print(fileID, index)
+    fileID += '_info'
 
     """
     # 1. use info_3d pathPoint
@@ -34,12 +35,12 @@ for i in range(5, 6):
     # 2. use BFS
     # Here use the first point in info_3d
     """
-    lat, lon = None, None
-    for pathPoint in pathPoint_set_info3d:
-        print(pathPoint)
-        [lat, lon] = pathPoint.split(',')
-        break
-    panoFetcher.bfs_aug(fileID, (lat, lon), 10)
+    #lat, lon = None, None
+    #for pathPoint in pathPoint_set_info3d:
+    #    print(pathPoint)
+    #    [lat, lon] = pathPoint.split(',')
+    #    break
+    #panoFetcher.bfs_aug(fileID, (lat, lon), 10)
 
     """
     3. use info_3d plus BFS

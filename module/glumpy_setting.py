@@ -82,6 +82,28 @@ class ProgramSV3D:
         #print(np.dot(model2, model))
         #print(self.u_model)
 
+    def info_3d_offs(self):
+        glm.rotate(self.u_model, 180, 0, 1, 0)
+
+
+class ProgramPlane:
+    def __init__(self, data=None, name='ProgramSV3D', face=None):
+        data = data.view(gloo.VertexBuffer)
+        program = gloo.Program(vertexPoint, fragmentSelect)
+        program.bind(data)
+
+        program['color'] = (1, 0, 0, 1)
+        program['color_sel'] = 1
+        program['u_model'] = np.eye(4, dtype=np.float32)
+        program['u_view'] = glm.translation(0, 0, -50)
+
+        self.name = name
+        self.program = program
+        self.draw_mode = gl.GL_TRIANGLES
+        self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
+            4, dtype=np.float32)
+        self.lat, self.lon, self.yaw = 0, 0, 0
+        self.face = face
 
 class GpyWindow:
     def __init__(self):
@@ -94,7 +116,7 @@ class GpyWindow:
         self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
             4, dtype=np.float32)
 
-        self.u_view = glm.translation(0, 0, -15)
+        self.u_view = glm.translation(0, 0, -25)
 
         @window.event
         def on_draw(dt):
@@ -107,7 +129,9 @@ class GpyWindow:
 
                 program['u_view'] = self.u_view
                 program['u_projection'] = self.u_projection
-                program.draw(program_object.draw_mode)
+                #program.draw(program_object.draw_mode)
+                program.draw(gl.GL_TRIANGLE_STRIP, program_object.face)
+                #program.draw(gl.GL_POINTS)
 
         @window.event
         def on_resize(width, height):
@@ -374,7 +398,19 @@ void main()
     v_color = a_color;
 }
 """
-
+vertexTri = """
+uniform mat4   u_model;         // Model matrix
+uniform mat4   u_view;          // View matrix
+uniform mat4   u_projection;    // Projection matrix
+attribute vec3 a_position;      // Vertex position
+attribute vec3 a_color;
+varying vec3 v_color;
+void main()
+{
+    gl_Position = u_projection * u_view * u_model * vec4(a_position, 1.0);
+    v_color = a_color;
+}
+"""
 fragmentSelect = """
 varying vec3 v_color;
 uniform vec4 color;
