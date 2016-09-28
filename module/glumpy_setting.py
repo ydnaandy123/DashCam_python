@@ -129,8 +129,8 @@ class GpyWindow:
 
                 program['u_view'] = self.u_view
                 program['u_projection'] = self.u_projection
-                #program.draw(program_object.draw_mode)
-                program.draw(gl.GL_TRIANGLE_STRIP, program_object.face)
+                program.draw(program_object.draw_mode)
+                #program.draw(gl.GL_TRIANGLE_STRIP, program_object.face)
                 #program.draw(gl.GL_POINTS)
 
         @window.event
