@@ -45,7 +45,7 @@ def geo_2_ecef(lat, lon, height=0):
     X = (N + height) * np.cos(lat) * np.cos(lon)
     Y = (N + height) * np.cos(lat) * np.sin(lon)
     Z = (N * (1-ee) + height) * np.sin(lat)
-    return X, Y, Z
+    return np.array([X, Y, Z])
 
 
 def ecef_2_geo(X, Y, Z):
@@ -62,3 +62,20 @@ def ecef_2_geo(X, Y, Z):
     #if Y > 0:
     #    lon += 180    
     return lat, lon, h
+
+
+def sv3d_apply_m4(data, m4):
+    vec3 = np.reshape(data, (256 * 512, 3))
+    vec4 = np.hstack([vec3, np.ones((len(vec3), 1))])
+    vec4_mul = np.dot(vec4, m4)
+    vec4_out = np.reshape(vec4_mul[:, 0:3], (256, 512, 3))
+    return vec4_out
+
+def sv3d_region_apply_m4(data, m4):
+    size = data.shape[0] / 256
+    print(size)
+    vec3 = np.reshape(data, (256 * 512 * size, 3))
+    vec4 = np.hstack([vec3, np.ones((len(vec3), 1))])
+    vec4_mul = np.dot(vec4, m4)
+    vec4_out = np.reshape(vec4_mul[:, 0:3], (256 * size, 512, 3))
+    return vec4_out

@@ -2,7 +2,8 @@
 import numpy as np
 from glumpy import app, gloo, gl, glm
 from glumpy.ext import png
-
+#
+import base_process
 
 class ProgramAxis():
     def __init__(self, data=None, name='ProgramAxis', line_length=1, arrow_size=2, geometry_size=1):
@@ -85,9 +86,13 @@ class ProgramSV3D:
     def info_3d_offs(self):
         glm.rotate(self.u_model, 180, 0, 1, 0)
 
+    def add_sv3d(self, sv3d):
+        sv3d = sv3d.view(gloo.VertexBuffer)
+        self.program.bind(sv3d)
+
 
 class ProgramPlane:
-    def __init__(self, data=None, name='ProgramSV3D', face=None):
+    def __init__(self, data=None, name='ProgramPlane', face=None):
         data = data.view(gloo.VertexBuffer)
         program = gloo.Program(vertexPoint, fragmentSelect)
         program.bind(data)
@@ -103,7 +108,31 @@ class ProgramPlane:
         self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
             4, dtype=np.float32)
         self.lat, self.lon, self.yaw = 0, 0, 0
-        self.face = face
+        self.face = face.view(gloo.IndexBuffer)
+
+
+class ProgramSV3DRegion:
+    def __init__(self, data=None, name='ProgramSV3DRegion', point_size=1, anchor=np.eye(4, dtype=np.float32)):
+        self.data = data.view(gloo.VertexBuffer)
+        self.anchor = anchor
+        self.data['a_position'] = base_process.sv3d_region_apply_m4(data=self.data['a_position'], m4=self.anchor)
+
+        program = gloo.Program(vertexPoint, fragmentSelect)
+        program.bind(self.data)
+
+        program['color'] = (1, 0, 0, 1)
+        program['color_sel'] = 1
+        program['a_pointSize'] = point_size
+        program['u_model'] = np.eye(4, dtype=np.float32)
+        program['u_view'] = np.eye(4, dtype=np.float32)
+
+        self.name = name
+        self.program = program
+        self.draw_mode = gl.GL_POINTS
+        self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
+            4, dtype=np.float32)
+        self.anchor = anchor
+
 
 class GpyWindow:
     def __init__(self):
@@ -129,8 +158,10 @@ class GpyWindow:
 
                 program['u_view'] = self.u_view
                 program['u_projection'] = self.u_projection
-                program.draw(program_object.draw_mode)
-                #program.draw(gl.GL_TRIANGLE_STRIP, program_object.face)
+                if program_object.draw_mode == gl.GL_TRIANGLES:
+                    program.draw(program_object.draw_mode, program_object.face)
+                else:
+                    program.draw(program_object.draw_mode)
                 #program.draw(gl.GL_POINTS)
 
         @window.event

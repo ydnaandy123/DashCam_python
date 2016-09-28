@@ -33,7 +33,7 @@ index, ecef_offs, matrix_offs = 0, np.zeros(3), np.eye(4, dtype=np.float32)
 
 match = []
 match_c = []
-for img, gps in info_3d.items():
+for img, gps in sorted(info_3d.items()):
     for gps, indices in info_3d[img].items():
         print(gps, sv3DRegion.fileMeta['info2ID'][gps], sv3DRegion.fileMeta['id2GPS'][sv3DRegion.fileMeta['info2ID'][gps]])
         sv3D = sv3DRegion.sv3D_Dict[sv3DRegion.fileMeta['info2ID'][gps]]

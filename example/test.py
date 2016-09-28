@@ -3,7 +3,7 @@
 # Distributed under the (new) BSD License.
 # -----------------------------------------------------------------------------
 import triangle
-from scipy.spatial import Delaunay
+import scipy.spatial
 from glumpy import app, gl, gloo
 import numpy as np
 from glumpy.geometry import colorcube
@@ -11,6 +11,7 @@ from glumpy.geometry import colorcube
 position = np.array([(-0.8, -1.2), (-1.4, +0.5), (0, 1.2), (+1.4, +0.5), (+0.8, -1.2)])
 color = np.array([[1, 0, 0], [0, 1, 0], [1, 1, 1], [0, 0, 1], [1, 1, 0]])
 
+yo = scipy.spatial.KDTree(position)
 #tri = Delaunay(position)
 
 

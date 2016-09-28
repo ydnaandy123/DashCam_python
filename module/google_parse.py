@@ -8,37 +8,12 @@ import base64
 import struct
 import os
 import json
+from glumpy import glm
+
 #
 import base_process
 
 storePath = '/home/andy/src/Google/panometa/'
-
-
-class StreetView3DRegionnnn:
-    def __init__(self, fileID):
-        fname = '/home/andy/src/Google/panometa/' + fileID + '/fileMeta.json'
-        if os.path.isfile(fname):
-            print('Successfully find the existing region"' + fileID + '"(accroding to the fileMeta):')
-            with open(fname) as data_file:
-                fileMeta = json.load(data_file)
-                self.panoDict = fileMeta['id2GPS']
-                data_file.close()
-        else:
-            print('Fail to open the file or path doesn\'t exit')
-
-    def createTopoloy(self):
-        id2GPS = self.panoDict
-        panoNum = len(id2GPS)
-        data = np.zeros((panoNum), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
-        ECEF = []
-        for id in id2GPS:
-            GPS = id2GPS[id]
-            ECEF.append(base_process.geo2ECEF(float(GPS[0]), float(GPS[1])))
-        data['a_color'] = [1, 1, 1]
-        data['a_position'] = np.asarray(ECEF, dtype=np.float32)
-        # data['a_position'] -= data[0]['a_position']
-        self.topology = data
-        return data
 
 
 class StreetView3DRegion:
@@ -54,7 +29,28 @@ class StreetView3DRegion:
         # as this size(256, 512), at least what I've seen
         self.sphericalRay = create_spherical_ray(256, 512)
 
+        self.anchorId, self.anchorLat, self.anchorLon = None, 0, 0
+        self.anchorECEF, self.anchorMatrix = np.zeros(3), np.eye(4, dtype=np.float32)
         self.sv3D_Dict = {}
+
+
+    def init_region(self, anchor=None):
+        """
+        Initialize the local region
+        Find the anchor
+        :return:
+        """
+        if anchor is None:
+            print('Random anchor')
+            for panoId in self.fileMeta['id2GPS']:
+                print('anchor is:', panoId, self.fileMeta['id2GPS'][panoId])
+                self.anchorId, self.anchorLat, self.anchorLon = \
+                    panoId, float(self.fileMeta['id2GPS'][panoId][0]), float(self.fileMeta['id2GPS'][panoId][1])
+                self.anchorECEF = base_process.geo_2_ecef(self.anchorLat, self.anchorLon, 0)
+                break
+        else:
+            print('use the anchor')
+
         self.create_region()
 
     def create_region(self):
@@ -65,9 +61,10 @@ class StreetView3DRegion:
                 pano_meta = json.load(data_file)
                 sv3d = StreetView3D(pano_meta, panorama)
                 sv3d.create_ptcloud(self.sphericalRay)
+                sv3d.global_adjustment()
+                sv3d.local_adjustment(self.anchorECEF)
                 self.sv3D_Dict[panoId] = sv3d
                 data_file.close()
-
 
 class StreetView3D:
     def __init__(self, pano_meta, panorama):
@@ -83,6 +80,8 @@ class StreetView3D:
             print("The depthMap's size of id:%s is unusual: (%d, %d)"
                   % (self.panoMeta['panoId'], self.depthHeader['panoHeight'], self.depthHeader['panoWidth']))
 
+        self.matrix_global = np.eye(4, dtype=np.float32)
+        self.matrix_local = np.eye(4, dtype=np.float32)
         self.matrix_offs = np.eye(4, dtype=np.float32)
 
     def decode_depth_map(self, raw):
@@ -108,7 +107,8 @@ class StreetView3D:
                 {'d': d, 'nx': nx, 'ny': ny, 'nz': nz})  # nx/ny/nz = unit normal, d = distance from origin
             pos += 16
 
-    def make_padding(self, s):
+    @staticmethod
+    def make_padding(s):
         return (4 - (len(s) % 4)) * '='
 
     def create_ptcloud_old_version(self, v):
@@ -129,7 +129,7 @@ class StreetView3D:
                 data[h][w]['a_position'] = depth * v[h, w, :]
         self.depthMap = depth_map
         self.ptCLoudData = data
-        self.fix_sperical_inside_out()
+        self.fix_spherical_inside_out()
 
     def create_ptcloud(self, v):
         height, width = self.depthHeader['panoHeight'], self.depthHeader['panoWidth']
@@ -152,9 +152,15 @@ class StreetView3D:
         data['a_color'] = np.array(panorama) / 255
         self.depthMap = depth_map.reshape((height, width))
         self.ptCLoudData = data
-        self.fix_sperical_inside_out()
+        self.fix_spherical_inside_out()
 
-    def fix_sperical_inside_out(self):
+    def fix_spherical_inside_out(self):
+        """
+        panorama's four corner v.s center point
+        if the spherical_ray is center point, then this process need to be done
+        I reverse the y-axis make it inside-out
+        :return:fixed  ptCLoudData
+        """
         self.ptCLoudData['a_position'][:, :, 1] = -self.ptCLoudData['a_position'][:, :, 1]
 
     def show_depth(self):
@@ -166,6 +172,28 @@ class StreetView3D:
         depth_map /= 255
         scipy.misc.imshow(depth_map)
         scipy.misc.imshow(self.panorama)
+
+    def global_adjustment(self):
+        matrix = np.eye(4, dtype=np.float32)
+        glm.rotate(matrix, 180, 0, 1, 0)
+        glm.rotate(matrix, self.yaw, 0, 0, -1)
+        glm.rotate(matrix, self.lat, -1, 0, 0)
+        glm.rotate(matrix, self.lon, 0, 1, 0)
+        self.matrix_global = matrix
+
+    def local_adjustment(self, anchor_ecef):
+        matrix = np.eye(4, dtype=np.float32)
+        ecef = self.ecef - anchor_ecef
+        glm.translate(matrix, ecef[1], ecef[2], ecef[0])
+        self.matrix_local = matrix
+
+    def apply_global_adjustment(self):
+        self.ptCLoudData['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudData['a_position'],
+                                                                    m4=self.matrix_global)
+
+    def apply_local_adjustment(self):
+        self.ptCLoudData['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudData['a_position'],
+                                                                    m4=self.matrix_local)
 
     def showIndex(self):
         height = self.DepthHeader['panoHeight']
@@ -202,3 +230,30 @@ def create_spherical_ray(height, width):
     v[:, :, 2] = cos_theta.reshape((height, 1)) * np.ones(width)
 
     return v
+
+
+class StreetView3DRegionnnn:
+    def __init__(self, fileID):
+        fname = '/home/andy/src/Google/panometa/' + fileID + '/fileMeta.json'
+        if os.path.isfile(fname):
+            print('Successfully find the existing region"' + fileID + '"(accroding to the fileMeta):')
+            with open(fname) as data_file:
+                fileMeta = json.load(data_file)
+                self.panoDict = fileMeta['id2GPS']
+                data_file.close()
+        else:
+            print('Fail to open the file or path doesn\'t exit')
+
+    def createTopoloy(self):
+        id2GPS = self.panoDict
+        panoNum = len(id2GPS)
+        data = np.zeros((panoNum), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+        ECEF = []
+        for id in id2GPS:
+            GPS = id2GPS[id]
+            ECEF.append(base_process.geo2ECEF(float(GPS[0]), float(GPS[1])))
+        data['a_color'] = [1, 1, 1]
+        data['a_position'] = np.asarray(ECEF, dtype=np.float32)
+        # data['a_position'] -= data[0]['a_position']
+        self.topology = data
+        return data
