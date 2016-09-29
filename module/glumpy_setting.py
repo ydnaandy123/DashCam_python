@@ -112,10 +112,9 @@ class ProgramPlane:
 
 
 class ProgramSV3DRegion:
-    def __init__(self, data=None, name='ProgramSV3DRegion', point_size=1, anchor=np.eye(4, dtype=np.float32)):
+    def __init__(self, data=None, name='ProgramSV3DRegion', point_size=1, anchor_matrix=np.eye(4, dtype=np.float32)):
         self.data = data.view(gloo.VertexBuffer)
-        self.anchor = anchor
-        self.data['a_position'] = base_process.sv3d_region_apply_m4(data=self.data['a_position'], m4=np.linalg.inv(self.anchor))
+        self.anchor_matrix = anchor_matrix
 
         program = gloo.Program(vertexPoint, fragmentSelect)
         program.bind(self.data)
@@ -131,7 +130,10 @@ class ProgramSV3DRegion:
         self.draw_mode = gl.GL_POINTS
         self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
             4, dtype=np.float32)
-        self.anchor = anchor
+
+    def apply_anchor(self):
+        self.data['a_position'] = base_process.sv3d_apply_m4(data=self.data['a_position'], m4=np.linalg.inv(self.anchor_matrix))
+
 
 
 class GpyWindow:

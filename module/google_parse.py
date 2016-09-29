@@ -33,7 +33,6 @@ class StreetView3DRegion:
         self.anchorECEF, self.anchorMatrix = np.zeros(3), np.eye(4, dtype=np.float32)
         self.sv3D_Dict = {}
 
-
     def init_region(self, anchor=None):
         """
         Initialize the local region
@@ -50,11 +49,30 @@ class StreetView3DRegion:
                 break
         else:
             print('use the anchor')
+            print('anchor is:', anchor['panoId'], anchor['Lat'], anchor['Lon'])
+            self.anchorId, self.anchorLat, self.anchorLon = \
+                anchor['panoId'], anchor['Lat'], anchor['Lon']
+            self.anchorECEF = base_process.geo_2_ecef(self.anchorLat, self.anchorLon, 0)
+
+        # The anchor
+        pano_id_dir = os.path.join(self.dataDir, self.anchorId)
+        panorama = scipy.misc.imread(pano_id_dir + '.jpg').astype(np.float)
+        with open(pano_id_dir + '.json') as data_file:
+            pano_meta = json.load(data_file)
+            sv3d = StreetView3D(pano_meta, panorama)
+            sv3d.create_ptcloud(self.sphericalRay)
+            sv3d.global_adjustment()
+            sv3d.local_adjustment(self.anchorECEF)
+            self.sv3D_Dict[self.anchorId] = sv3d
+            self.anchorMatrix = np.dot(sv3d.matrix_local, sv3d.matrix_global)
+            data_file.close()
 
         self.create_region()
 
     def create_region(self):
         for panoId in self.fileMeta['id2GPS']:
+            if panoId == self.anchorId:
+                continue
             pano_id_dir = os.path.join(self.dataDir, panoId)
             panorama = scipy.misc.imread(pano_id_dir + '.jpg').astype(np.float)
             with open(pano_id_dir + '.json') as data_file:
@@ -65,6 +83,7 @@ class StreetView3DRegion:
                 sv3d.local_adjustment(self.anchorECEF)
                 self.sv3D_Dict[panoId] = sv3d
                 data_file.close()
+
 
 
 class StreetView3D:
@@ -151,6 +170,20 @@ class StreetView3D:
         data = np.zeros((height, width), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
         data['a_position'] = np.transpose(xyz).reshape((height, width, 3))
         data['a_color'] = np.array(panorama) / 255
+
+        data = data[np.nonzero(~np.isnan(data['a_position'][:, :, 0]))]
+        data = data[np.nonzero(~np.isnan(data['a_position'][:, 1]))]
+        data = data[np.nonzero(~np.isnan(data['a_position'][:, 2]))]
+        con_1 = data['a_position'][:, 0] < 10
+        con_2 = data['a_position'][:, 1] < 10
+        con_3 = data['a_position'][:, 2] < 10
+        con_4 = data['a_position'][:, 0] > -10
+        con_5 = data['a_position'][:, 1] > -10
+        con_6 = data['a_position'][:, 2] > -10
+        data = data[np.nonzero(con_1 * con_2 * con_3 * con_4 * con_5 * con_6)]
+        #data = data[np.nonzero(~np.isnan(data['a_position'][:, :, 0]))]
+
+
         self.depthMap = depth_map.reshape((height, width))
         self.ptCLoudData = data
         self.fix_spherical_inside_out()
@@ -162,7 +195,7 @@ class StreetView3D:
         I reverse the y-axis make it inside-out
         :return:fixed  ptCLoudData
         """
-        self.ptCLoudData['a_position'][:, :, 1] = -self.ptCLoudData['a_position'][:, :, 1]
+        self.ptCLoudData['a_position'][:, 1] = -self.ptCLoudData['a_position'][:, 1]
 
     def show_depth(self):
         # The further, the brighter

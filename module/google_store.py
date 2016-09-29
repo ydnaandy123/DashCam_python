@@ -180,9 +180,9 @@ class PanoFetcher:
         pano_set, id_2_gps, info_2_id = set(), {}, {}
         file_id += '_trajectory'
         if self.file_dir_exist(file_id):
-            print('This info_3d file already exists.')
+            print('This trajectory file already exists.')
         else:
-            print('Create new info_3d panometa.')
+            print('Create new trajectory panometa.')
             for pathPoint in path_point_set_trajectory:
                 [lat, lon] = pathPoint
                 pano = get_panorama_metadata(lat=lat, lon=lon, radius=self.radius)
