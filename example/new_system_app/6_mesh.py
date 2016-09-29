@@ -5,6 +5,7 @@
 import numpy as np
 import sys
 from plyfile import PlyData, PlyElement
+import triangle
 
 sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')  # use the module under 'module'
 import file_process
@@ -44,8 +45,8 @@ for fileIndex in range(sleIndex,sleIndex+1):
             data = np.concatenate((data, sv3D.ptCLoudData), axis=0)
 
         index += 1
-       # if index > 0:
-       #     break
+        #if index > 0:
+        #    break
         #break
 
 
@@ -53,6 +54,11 @@ gpyWindow = glumpy_setting.GpyWindow()
 
 programSV3DRegion = glumpy_setting.ProgramSV3DRegion(data=data, name=None, point_size=1, anchor_matrix=anchor_matrix_whole)
 programSV3DRegion.apply_anchor()
+
+data['a_position'][:, 2] = 0
+tri = np.array(triangle.delaunay(data['a_position'][:, 0:2]), dtype=np.uint32)
+programGround = glumpy_setting.ProgramPlane(data=data, name=str(index), face=tri)
+gpyWindow.add_program(programGround)
 
 """
 ALL PLY EXPORT IN HERE
@@ -74,7 +80,7 @@ el = PlyElement.describe(xyzzz, 'vertex')
 PlyData([el]).write('over_simple_binary.ply')
 '''
 
-gpyWindow.add_program(programSV3DRegion)
+#gpyWindow.add_program(programSV3DRegion)
 
 programAxis = glumpy_setting.ProgramAxis(line_length=5)
 gpyWindow.add_program(programAxis)

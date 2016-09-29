@@ -176,11 +176,11 @@ class StreetView3D:
         data = data[np.nonzero(~np.isnan(data['a_position'][:, 2]))]
         con_1 = data['a_position'][:, 0] < 10
         con_2 = data['a_position'][:, 1] < 10
-        con_3 = data['a_position'][:, 2] < 10
+        #con_3 = data['a_position'][:, 2] < 10
         con_4 = data['a_position'][:, 0] > -10
         con_5 = data['a_position'][:, 1] > -10
-        con_6 = data['a_position'][:, 2] > -10
-        data = data[np.nonzero(con_1 * con_2 * con_3 * con_4 * con_5 * con_6)]
+        con_6 = data['a_position'][:, 2] > -2
+        data = data[np.nonzero(con_1 * con_2 * con_4 * con_5 * con_6)]
         #data = data[np.nonzero(~np.isnan(data['a_position'][:, :, 0]))]
 
 
