@@ -176,6 +176,38 @@ class PanoFetcher:
             print('The region "' + file_id + '" has not created yet.')
             return
 
+    def trajectory(self, file_id, path_point_set_trajectory):
+        pano_set, id_2_gps, info_2_id = set(), {}, {}
+        file_id += '_trajectory'
+        if self.file_dir_exist(file_id):
+            print('This info_3d file already exists.')
+        else:
+            print('Create new info_3d panometa.')
+            for pathPoint in path_point_set_trajectory:
+                [lat, lon] = pathPoint
+                pano = get_panorama_metadata(lat=lat, lon=lon, radius=self.radius)
+                print(lat, lon, pano.PanoId)
+                id_2_gps[pano.PanoId] = [pano.Lat, pano.Lon]
+                if pano.PanoId not in pano_set:
+                    pano_set.add(pano.PanoId)
+                    img = get_panorama(pano.PanoId, zoom=self.zoom)
+                    try:
+                        pano_basic = {'panoId': pano.PanoId, 'Lat': pano.Lat,
+                                      'Lon': pano.Lon, 'ProjectionPanoYawDeg': pano.ProjectionPanoYawDeg,
+                                      'AnnotationLinks': pano.AnnotationLinks, 'rawDepth': pano.rawDepth,
+                                      'Text': pano.Text}
+                    except:
+                        print(pano.PanoId + ' lacks some important data.')
+                        pano_basic = {}
+                    store_dir = storePath + file_id + '/' + pano.PanoId
+                    self.store_pano(store_dir, pano_basic, img)
+            with open(storePath + file_id + '/fileMeta.json', 'w') as outfile:
+                file_meta = {'id2GPS': id_2_gps}
+                print("id2GPS's length: %d" % len(id_2_gps))
+                json.dump(file_meta, outfile)
+                outfile.close()
+
+
 # Something I don't familiar
 # This object helps me a alot to parse the google data					
 class PanoramaMetadata:

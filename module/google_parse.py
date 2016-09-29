@@ -66,6 +66,7 @@ class StreetView3DRegion:
                 self.sv3D_Dict[panoId] = sv3d
                 data_file.close()
 
+
 class StreetView3D:
     def __init__(self, pano_meta, panorama):
         self.panoMeta = pano_meta

@@ -3,6 +3,7 @@
 # Pack the matrix process into google parse
 # ==============================================================
 import numpy as np
+from plyfile import PlyData, PlyElement
 import sys
 
 sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')  # use the module under 'module'
@@ -44,6 +45,7 @@ for fileIndex in range(sleIndex,sleIndex+1):
             data = np.concatenate((data, sv3D.ptCLoudData), axis=0)
 
         index += 1
+        break
 
 
     """
@@ -59,8 +61,28 @@ for fileIndex in range(sleIndex,sleIndex+1):
             index += 1
     '''
 
+
 programSV3DRegion = glumpy_setting.ProgramSV3DRegion(data=data, name=None, point_size=1, anchor=anchor_matrix_whole)
 gpyWindow.add_program(programSV3DRegion)
+
+print(data['a_position'][0, 0, 0])
+print(np.isnan(data['a_position'][0, 0, 0]))
+print(~np.isnan(data['a_position'][0, 0, 0]))
+data['a_color'] *= 255
+data['a_color'].astype(int)
+
+data = data[np.nonzero(~np.isnan(data['a_position'][:, :, 0]))]
+xyzzz = np.zeros(len(data), dtype=[('x', 'f4'), ('y', 'f4'), ('z', 'f4'), ('r', 'f4'), ('g', 'f4'), ('b', 'f4')])
+xyzzz['x'] = data['a_position'][:, 0]
+xyzzz['y'] = data['a_position'][:, 1]
+xyzzz['z'] = data['a_position'][:, 2]
+xyzzz['r'] = data['a_color'][:, 0]
+xyzzz['g'] = data['a_color'][:, 1]
+xyzzz['b'] = data['a_color'][:, 2]
+el = PlyElement.describe(xyzzz, 'vertex')
+
+PlyData([el]).write('some_binary.ply')
+PlyData([el], text=True).write('some_ascii.ply')
 
 programAxis = glumpy_setting.ProgramAxis(line_length=5)
 gpyWindow.add_program(programAxis)

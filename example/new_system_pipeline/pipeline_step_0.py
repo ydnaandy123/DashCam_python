@@ -22,7 +22,6 @@ for i in range(50):
     index = i
     fileID = str(dashCamFileProcess.list50[index][1])
     print(fileID, index)
-    fileID += '_info'
 
     """
     # 1. use info_3d pathPoint

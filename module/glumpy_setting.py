@@ -115,7 +115,7 @@ class ProgramSV3DRegion:
     def __init__(self, data=None, name='ProgramSV3DRegion', point_size=1, anchor=np.eye(4, dtype=np.float32)):
         self.data = data.view(gloo.VertexBuffer)
         self.anchor = anchor
-        self.data['a_position'] = base_process.sv3d_region_apply_m4(data=self.data['a_position'], m4=self.anchor)
+        self.data['a_position'] = base_process.sv3d_region_apply_m4(data=self.data['a_position'], m4=np.linalg.inv(self.anchor))
 
         program = gloo.Program(vertexPoint, fragmentSelect)
         program.bind(self.data)

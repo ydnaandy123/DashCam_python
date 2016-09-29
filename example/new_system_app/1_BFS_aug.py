@@ -17,17 +17,16 @@ panoFetcher = google_store.PanoFetcher(zoom, radius)
 dashCamFileProcess = file_process.DashCamFileProcessor()
 
 # Select one of the fileName among the 50 selected files
-for i in range(0, 1):
+for i in range(3, 4):
 
     index = i
     fileID = str(dashCamFileProcess.list50[index][1])
     print(fileID, index)
-    fileID += '_info'
 
     """
     # 1. use info_3d pathPoint
     """
-    #pathPoint_set_info3d = dashCamFileProcess.get_path_info3d(file_id=fileID)
+    pathPoint_set_info3d = dashCamFileProcess.get_path_info3d(file_id=fileID)
     #print(pathPoint_set_info3d)
     #panoFetcher.info_3d(fileID, pathPoint_set_info3d)
 
@@ -40,6 +39,6 @@ for i in range(0, 1):
         print(pathPoint)
         [lat, lon] = pathPoint.split(',')
         break
-    panoFetcher.bfs_aug(fileID, (lat, lon), 10)
+    panoFetcher.bfs_aug(fileID, (lat, lon), 15)
 
 
