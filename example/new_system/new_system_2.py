@@ -55,7 +55,7 @@ sv3D.create_ptcloud(sphericalRay)
 toc = timeit.default_timer()
 print('The new way takes %.8f' % (toc-tic))
 # Visualize
-#sv3D.show_depth()
+sv3D.show_depth()
 
 vertex = """
 uniform mat4   u_model;         // Model matrix

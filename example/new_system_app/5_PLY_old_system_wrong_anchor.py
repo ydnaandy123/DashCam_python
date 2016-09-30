@@ -44,8 +44,8 @@ for fileIndex in range(sleIndex,sleIndex+1):
             data = np.concatenate((data, sv3D.ptCLoudData), axis=0)
 
         index += 1
-       # if index > 0:
-       #     break
+        if index > 10:
+            break
         #break
 
 
@@ -77,7 +77,7 @@ PlyData([el]).write('over_simple_binary.ply')
 gpyWindow.add_program(programSV3DRegion)
 
 programAxis = glumpy_setting.ProgramAxis(line_length=5)
-gpyWindow.add_program(programAxis)
+#gpyWindow.add_program(programAxis)
 
 gpyWindow.run()
 

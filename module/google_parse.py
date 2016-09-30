@@ -41,7 +41,7 @@ class StreetView3DRegion:
         """
         if anchor is None:
             print('Random anchor')
-            for panoId in self.fileMeta['id2GPS']:
+            for panoId in sorted(self.fileMeta['id2GPS']):
                 print('anchor is:', panoId, self.fileMeta['id2GPS'][panoId])
                 self.anchorId, self.anchorLat, self.anchorLon = \
                     panoId, float(self.fileMeta['id2GPS'][panoId][0]), float(self.fileMeta['id2GPS'][panoId][1])
@@ -104,6 +104,7 @@ class StreetView3D:
         self.matrix_local = np.eye(4, dtype=np.float32)
         self.matrix_offs = np.eye(4, dtype=np.float32)
 
+
     def decode_depth_map(self, raw):
         raw = zlib.decompress(base64.urlsafe_b64decode(raw + self.make_padding(raw)))
         pos = 0
@@ -155,13 +156,19 @@ class StreetView3D:
         height, width = self.depthHeader['panoHeight'], self.depthHeader['panoWidth']
         plane_indices = np.array(self.depthMapIndices)
         depth_map = np.zeros((height * width), dtype=np.float32)
-        depth_map[np.nonzero(plane_indices == 0)] = np.nan
+        depth_map[np.nonzero(plane_indices == 0)] = np.inf
         v = v.reshape((height * width, 3))
 
         # index == 0 refers to the sky
         for i in range(1, self.depthHeader['numPlanes']):
             plane = self.depthMapPlanes[i]
             p_depth = np.ones((height * width)) * plane['d']
+
+            vec = (plane['nx'], plane['ny'], plane['nz'])
+            angle_diff = base_process.angle_between(vec, (0, 0, -1))
+            if angle_diff > 0.1:
+               continue
+
             depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
             depth_map[np.nonzero(plane_indices == i)] = depth[np.nonzero(plane_indices == i)]
 
@@ -171,18 +178,17 @@ class StreetView3D:
         data['a_position'] = np.transpose(xyz).reshape((height, width, 3))
         data['a_color'] = np.array(panorama) / 255
 
-        data = data[np.nonzero(~np.isnan(data['a_position'][:, :, 0]))]
-        data = data[np.nonzero(~np.isnan(data['a_position'][:, 1]))]
-        data = data[np.nonzero(~np.isnan(data['a_position'][:, 2]))]
-        con_1 = data['a_position'][:, 0] < 10
-        con_2 = data['a_position'][:, 1] < 10
-        #con_3 = data['a_position'][:, 2] < 10
-        con_4 = data['a_position'][:, 0] > -10
-        con_5 = data['a_position'][:, 1] > -10
-        con_6 = data['a_position'][:, 2] > -2
-        data = data[np.nonzero(con_1 * con_2 * con_4 * con_5 * con_6)]
-        #data = data[np.nonzero(~np.isnan(data['a_position'][:, :, 0]))]
+        con = ~np.isnan(data['a_position'][:, :, 0])
+        con &= ~np.isnan(data['a_position'][:, :, 1])
+        con &= ~np.isnan(data['a_position'][:, :, 2])
+        con &= (data['a_position'][:, :, 0] < 10)
+        con &= (data['a_position'][:, :, 0] > -10)
+        con &= (data['a_position'][:, :, 1] < 10)
+        con &= (data['a_position'][:, :, 1] > -10)
+        #con &= (data['a_position'][:, :, 2] < 10)
+        #con &= (data['a_position'][:, :, 2] > -10)
 
+        data = data[np.nonzero(con)]
 
         self.depthMap = depth_map.reshape((height, width))
         self.ptCLoudData = data
@@ -196,6 +202,13 @@ class StreetView3D:
         :return:fixed  ptCLoudData
         """
         self.ptCLoudData['a_position'][:, 1] = -self.ptCLoudData['a_position'][:, 1]
+        m4 = np.array([[ -1.00000000e+00,   0.00000000e+00,  -1.22464685e-16,   0.00000000e+00],
+              [  0.00000000e+00,   1.00000000e+00,   0.00000000e+00,   0.00000000e+00],
+              [  1.22464685e-16,   0.00000000e+00,  -1.00000000e+00,   0.00000000e+00],
+              [  0.00000000e+00,   0.00000000e+00,   0.00000000e+00,   1.00000000e+00]])
+
+        self.ptCLoudData['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudData['a_position'],
+                                                                    m4=m4)
 
     def show_depth(self):
         # The further, the brighter
@@ -206,10 +219,11 @@ class StreetView3D:
         depth_map /= 255
         scipy.misc.imshow(depth_map)
         scipy.misc.imshow(self.panorama)
+        #scipy.misc.imsave(self.)
 
     def global_adjustment(self):
         matrix = np.eye(4, dtype=np.float32)
-        glm.rotate(matrix, 180, 0, 1, 0)
+        #glm.rotate(matrix, 180, 0, 1, 0)
         glm.rotate(matrix, self.yaw, 0, 0, -1)
         glm.rotate(matrix, self.lat, -1, 0, 0)
         glm.rotate(matrix, self.lon, 0, 1, 0)

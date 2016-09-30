@@ -56,3 +56,19 @@ class DashCamFileProcessor:
         for img, gps in sorted(trajectory.items()):
             path_point_list_trajectory.append(gps)
         return path_point_list_trajectory
+
+    @staticmethod
+    def get_trajectory_anchor(file_id=None, file_index=None):
+        if file_id is not None:
+            print('fileID: ' + file_id)
+            with open(storePath + 'newSystem_deep_match/' + file_id + '/lat_lon_result.json') as data_file:
+                trajectory = json.load(data_file)
+                data_file.close()
+        elif file_index is not None:
+            trajectory = None
+            print('fileIndex: ' + file_index)
+        for img, gps in sorted(trajectory.items()):
+            anchor_trajectory = gps
+            return anchor_trajectory
+
+

@@ -4,8 +4,8 @@
 # ==============================================================
 import numpy as np
 import sys
-from plyfile import PlyData, PlyElement
 import triangle
+from plyfile import PlyData, PlyElement
 
 sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')  # use the module under 'module'
 import file_process
@@ -16,6 +16,7 @@ import glumpy_setting
 dashCamFileProcess = file_process.DashCamFileProcessor()
 # Manual anchor, but I think this is so wrong.
 anchor = {'panoId': 'uSjqj9Lt256V8I7RckMykA', 'Lat': 25.068939, 'Lon': 121.479781}
+
 """
 For Visual
 """
@@ -45,8 +46,8 @@ for fileIndex in range(sleIndex,sleIndex+1):
             data = np.concatenate((data, sv3D.ptCLoudData), axis=0)
 
         index += 1
-        #if index > 0:
-        #    break
+        if index > 0:
+            break
         #break
 
 
@@ -54,8 +55,9 @@ gpyWindow = glumpy_setting.GpyWindow()
 
 programSV3DRegion = glumpy_setting.ProgramSV3DRegion(data=data, name=None, point_size=1, anchor_matrix=anchor_matrix_whole)
 programSV3DRegion.apply_anchor()
+#gpyWindow.add_program(programSV3DRegion)
 
-data['a_position'][:, 2] = 0
+data = programSV3DRegion.data
 tri = np.array(triangle.delaunay(data['a_position'][:, 0:2]), dtype=np.uint32)
 programGround = glumpy_setting.ProgramPlane(data=data, name=str(index), face=tri)
 gpyWindow.add_program(programGround)
@@ -63,7 +65,7 @@ gpyWindow.add_program(programGround)
 """
 ALL PLY EXPORT IN HERE
 """
-'''
+
 data = programSV3DRegion.data
 data['a_color'] *= 255
 data['a_color'].astype(int)
@@ -77,10 +79,15 @@ xyzzz['green'] = data['a_color'][:, 1]
 xyzzz['blue'] = data['a_color'][:, 2]
 el = PlyElement.describe(xyzzz, 'vertex')
 
-PlyData([el]).write('over_simple_binary.ply')
-'''
+face = np.zeros(len(tri), dtype=[('vertex_indices', 'i4', 3)])
+face['vertex_indices'] = tri
+tri = PlyElement.describe(face, 'face')
 
-#gpyWindow.add_program(programSV3DRegion)
+PlyData([el, tri], text=True).write('some_ascii.ply')
+#PlyData([el]).write('over_simple_binary.ply')
+"""
+ALL PLY EXPORT IN HERE
+"""
 
 programAxis = glumpy_setting.ProgramAxis(line_length=5)
 gpyWindow.add_program(programAxis)

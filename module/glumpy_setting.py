@@ -134,7 +134,10 @@ class ProgramSV3DRegion:
     def apply_anchor(self):
         self.data['a_position'] = base_process.sv3d_apply_m4(data=self.data['a_position'], m4=np.linalg.inv(self.anchor_matrix))
 
-
+    def apply_anchor_plus_rotate(self):
+        matrix = self.anchor_matrix
+        glm.rotate(matrix, 180, 0, 1, 0)
+        self.data['a_position'] = base_process.sv3d_apply_m4(data=self.data['a_position'], m4=np.linalg.inv(matrix))
 
 class GpyWindow:
     def __init__(self):
