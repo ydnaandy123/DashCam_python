@@ -94,11 +94,13 @@ class ProgramSV3D:
 class ProgramPlane:
     def __init__(self, data=None, name='ProgramPlane', face=None):
         data = data.view(gloo.VertexBuffer)
-        program = gloo.Program(vertexPoint, fragmentSelect)
+        #program = gloo.Program(vertexPoint, fragmentSelect)
+        program = gloo.Program(vertexPoint, fragmentAlpha)
         program.bind(data)
 
-        program['color'] = (1, 0, 0, 1)
-        program['color_sel'] = 1
+        #program['color'] = (1, 0, 0, 1)
+        #program['color_sel'] = 1
+        program['alpha'] = 0.0
         program['u_model'] = np.eye(4, dtype=np.float32)
         program['u_view'] = glm.translation(0, 0, -50)
 
@@ -116,11 +118,13 @@ class ProgramSV3DRegion:
         self.data = data.view(gloo.VertexBuffer)
         self.anchor_matrix = anchor_matrix
 
-        program = gloo.Program(vertexPoint, fragmentSelect)
+        #program = gloo.Program(vertexPoint, fragmentSelect)
+        program = gloo.Program(vertexPoint, fragmentAlpha)
         program.bind(self.data)
 
-        program['color'] = (1, 0, 0, 1)
-        program['color_sel'] = 1
+        #program['color'] = (1, 0, 0, 1)
+        #program['color_sel'] = 1
+        program['alpha'] = 1.0
         program['a_pointSize'] = point_size
         program['u_model'] = np.eye(4, dtype=np.float32)
         program['u_view'] = np.eye(4, dtype=np.float32)
@@ -139,6 +143,7 @@ class ProgramSV3DRegion:
         glm.rotate(matrix, 180, 0, 1, 0)
         self.data['a_position'] = base_process.sv3d_apply_m4(data=self.data['a_position'], m4=np.linalg.inv(matrix))
 
+
 class GpyWindow:
     def __init__(self):
         self.programs = []
@@ -152,13 +157,38 @@ class GpyWindow:
 
         self.u_view = glm.translation(0, 0, -25)
 
+        self.demo_dt = 0
         @window.event
         def on_draw(dt):
             window.clear()
+            demo_idx = 0
             for program_object in self.programs:
                 program = program_object.program
 
                 model = matrix_model(np.copy(program_object.u_model))
+                self.deg_x += dt*40
+                self.deg_y += dt*40
+                self.demo_dt += dt/5
+
+                demo_idx += 1
+                #if demo_idx == 1 and int(self.demo_dt) % 2 == 0:
+                #    continue
+                #elif demo_idx == 2 and int(self.demo_dt) % 2 == 1:
+                #    continue
+
+                #print(self.demo_dt)
+                '''
+                if self.demo_dt > 1:
+                    if demo_idx == 1:
+                        if program['alpha'] <= 0.1:
+                            continue
+                        else:
+                            program['alpha'] -= 0.005
+                    elif demo_idx == 2:
+                        if self.demo_dt > 2.2:
+                            program['alpha'] += 0.005
+                '''
+
                 program['u_model'] = model
 
                 program['u_view'] = self.u_view
@@ -167,7 +197,7 @@ class GpyWindow:
                     program.draw(program_object.draw_mode, program_object.face)
                 else:
                     program.draw(program_object.draw_mode)
-                #program.draw(gl.GL_POINTS)
+
 
         @window.event
         def on_resize(width, height):
@@ -411,6 +441,22 @@ void main()
 }
 """
 
+vertexAlpha = """
+uniform mat4   u_model;         // Model matrix
+uniform mat4   u_view;          // View matrix
+uniform mat4   u_projection;    // Projection matrix
+uniform float  a_pointSize;
+attribute vec3 a_position;      // Vertex position
+attribute vec3 a_color;
+varying vec3 v_color;
+void main()
+{
+    gl_Position = u_projection * u_view * u_model * vec4(a_position, 1.0);
+    gl_PointSize = a_pointSize;
+    v_color = a_color;
+}
+"""
+
 fragmentSimple = """
 varying vec3 v_color;
 void main()
@@ -459,5 +505,14 @@ void main()
     else{
         gl_FragColor = color;
     }
+}
+"""
+fragmentAlpha = """
+varying vec3 v_color;
+uniform vec4 color;
+uniform float alpha;
+void main()
+{
+    gl_FragColor = vec4(v_color, alpha);
 }
 """

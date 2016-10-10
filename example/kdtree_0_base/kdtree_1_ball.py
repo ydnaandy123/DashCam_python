@@ -1,7 +1,15 @@
 import numpy as np
 from scipy import spatial
 
-x, y = np.mgrid[0:4, 0:4]
-points = zip(x.ravel(), y.ravel())
+points = [[0, 0, 0],
+          [1, 0, 0],
+          [10, 0, 0],
+          [0, 1, 0],
+          [0, 0, 1]]
 tree = spatial.KDTree(points)
-tree.query_ball_point([2, 0], 1)
+
+points = [[0, 0, 0], [1, 1, 1]]
+other = spatial.KDTree(points)
+
+yo = (tree.count_neighbors(other=other, r=1.5))
+print(yo)

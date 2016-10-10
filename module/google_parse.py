@@ -156,7 +156,7 @@ class StreetView3D:
         height, width = self.depthHeader['panoHeight'], self.depthHeader['panoWidth']
         plane_indices = np.array(self.depthMapIndices)
         depth_map = np.zeros((height * width), dtype=np.float32)
-        depth_map[np.nonzero(plane_indices == 0)] = np.inf
+        depth_map[np.nonzero(plane_indices == 0)] = np.nan
         v = v.reshape((height * width, 3))
 
         # index == 0 refers to the sky
@@ -167,9 +167,9 @@ class StreetView3D:
             vec = (plane['nx'], plane['ny'], plane['nz'])
             angle_diff = base_process.angle_between(vec, (0, 0, -1))
             if angle_diff > 0.1:
-               continue
-
-            depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
+                depth = np.ones((height * width)) * np.nan
+            else:
+                depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
             depth_map[np.nonzero(plane_indices == i)] = depth[np.nonzero(plane_indices == i)]
 
         panorama = scipy.misc.imresize(self.panorama, (height, width), interp='bilinear', mode=None)
@@ -181,6 +181,12 @@ class StreetView3D:
         con = ~np.isnan(data['a_position'][:, :, 0])
         con &= ~np.isnan(data['a_position'][:, :, 1])
         con &= ~np.isnan(data['a_position'][:, :, 2])
+
+        #con &= (data['a_position'][:, :, 0] < 0)
+        #con &= (data['a_position'][:, :, 0] > 0)
+        #con &= (data['a_position'][:, :, 1] < 0)
+        #con &= (data['a_position'][:, :, 1] > 0)
+
         con &= (data['a_position'][:, :, 0] < 10)
         con &= (data['a_position'][:, :, 0] > -10)
         con &= (data['a_position'][:, :, 1] < 10)

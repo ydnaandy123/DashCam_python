@@ -14,7 +14,9 @@ import glumpy_setting
 # Create dashCamFileProcess and load 50 top Dashcam
 dashCamFileProcess = file_process.DashCamFileProcessor()
 # Manual anchor, but I think this is so wrong.
-anchor = {'panoId': 'uSjqj9Lt256V8I7RckMykA', 'Lat': 25.068939, 'Lon': 121.479781}
+anchor = {'panoId': 'JfAAg1RD0myOqNIU0utdNA', 'Lat': 22.622543, 'Lon': 120.285735}
+# 137 'JfAAg1RD0myOqNIU0utdNA', '22.622543', '120.285735'
+# 731 '_RAj8Tpy0wDG-5kGbhTwjA', '23.962967', '120.964846'
 """
 For Visual
 """
@@ -29,7 +31,7 @@ for fileIndex in range(sleIndex,sleIndex+1):
     then set the region anchor
     """
     sv3DRegion = google_parse.StreetView3DRegion(fileID)
-    sv3DRegion.init_region(anchor=None)
+    sv3DRegion.init_region(anchor=anchor)
 
     anchor_matrix_whole = sv3DRegion.anchorMatrix
 
@@ -44,8 +46,8 @@ for fileIndex in range(sleIndex,sleIndex+1):
             data = np.concatenate((data, sv3D.ptCLoudData), axis=0)
 
         index += 1
-        if index > 10:
-            break
+        #if index > 10:
+        #    break
         #break
 
 
@@ -57,7 +59,7 @@ programSV3DRegion.apply_anchor()
 """
 ALL PLY EXPORT IN HERE
 """
-'''
+
 data = programSV3DRegion.data
 data['a_color'] *= 255
 data['a_color'].astype(int)
@@ -71,13 +73,14 @@ xyzzz['green'] = data['a_color'][:, 1]
 xyzzz['blue'] = data['a_color'][:, 2]
 el = PlyElement.describe(xyzzz, 'vertex')
 
-PlyData([el]).write('over_simple_binary.ply')
-'''
+PlyData([el], text=True).write('137_4_ascii.ply')
+#PlyData([el]).write('over_simple_binary.ply')
+
 
 gpyWindow.add_program(programSV3DRegion)
 
 programAxis = glumpy_setting.ProgramAxis(line_length=5)
-#gpyWindow.add_program(programAxis)
+gpyWindow.add_program(programAxis)
 
 gpyWindow.run()
 

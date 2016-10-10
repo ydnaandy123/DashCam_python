@@ -2,15 +2,14 @@
 # Copyright (c) 2009-2016 Nicolas P. Rougier. All rights reserved.
 # Distributed under the (new) BSD License.
 # -----------------------------------------------------------------------------
-from plyfile import PlyData, PlyElement
-import numpy
-from glumpy import glm
+
 import sys
 
 sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')  # use the module under 'module'
 import file_process
+import google_store
 
-
+'''
 vertex = numpy.array([(0, 0, 0),
                       (0, 1, 1),
                       (1, 0, 1),
@@ -25,8 +24,8 @@ el2 = PlyElement.describe(face, 'some_name2')
 PlyData([el1, el2], text=True).write('some_ascii.ply')
 '''
 
-id = 'uSjqj9Lt256V8I7RckMykA'
-pano = google_store.get_panorama_metadata(panoid=id)
-print(pano.id)
 
-'''
+id = 'RAj8Tpy0wDG-5kGbhTwjA'
+pano = google_store.get_panorama_metadata(lat=23.962966, lon=120.964844)
+print(pano.PanoId, pano.Lat, pano.Lon)
+
