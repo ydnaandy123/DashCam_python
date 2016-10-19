@@ -114,7 +114,7 @@ class ProgramPlane:
 
 
 class ProgramSV3DRegion:
-    def __init__(self, data=None, name='ProgramSV3DRegion', point_size=1, anchor_matrix=np.eye(4, dtype=np.float32)):
+    def __init__(self, data=None, name='ProgramSV3DRegion', point_size=1, anchor_matrix=np.eye(4, dtype=np.float32), alpha=1.0):
         self.data = data.view(gloo.VertexBuffer)
         self.anchor_matrix = anchor_matrix
 
@@ -124,7 +124,7 @@ class ProgramSV3DRegion:
 
         #program['color'] = (1, 0, 0, 1)
         #program['color_sel'] = 1
-        program['alpha'] = 1.0
+        program['alpha'] = alpha
         program['a_pointSize'] = point_size
         program['u_model'] = np.eye(4, dtype=np.float32)
         program['u_view'] = np.eye(4, dtype=np.float32)
@@ -155,7 +155,13 @@ class GpyWindow:
         self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
             4, dtype=np.float32)
 
-        self.u_view = glm.translation(0, 0, -25)
+        u_view = np.eye(4, dtype=np.float32)
+        #glm.rotate(u_view, 180, 0, 1, 0)
+        #glm.rotate(u_view, -70, 1, 0, 0)
+        #glm.rotate(u_view, -30, 0, 1, 0)
+        glm.translate(u_view, 0, 0, -25)
+
+        self.u_view = u_view
 
         self.demo_dt = 0
         @window.event
@@ -166,30 +172,27 @@ class GpyWindow:
                 program = program_object.program
 
                 model = matrix_model(np.copy(program_object.u_model))
-                self.deg_x += dt*40
-                self.deg_y += dt*40
+                #self.deg_x += dt*20
+                #self.deg_y += dt*40
                 self.demo_dt += dt/5
 
                 demo_idx += 1
-                #if demo_idx == 1 and int(self.demo_dt) % 2 == 0:
-                #    continue
-                #elif demo_idx == 2 and int(self.demo_dt) % 2 == 1:
-                #    continue
-
-                #print(self.demo_dt)
                 '''
-                if self.demo_dt > 1:
+                if self.demo_dt > 2:
                     if demo_idx == 1:
-                        if program['alpha'] <= 0.1:
-                            continue
-                        else:
-                            program['alpha'] -= 0.005
+                        if self.demo_dt > 2.4:
+                            if program['alpha'] <= 0.1:
+                                continue
+                            else:
+                                program['alpha'] -= 0.01
                     elif demo_idx == 2:
-                        if self.demo_dt > 2.2:
-                            program['alpha'] += 0.005
+                        if self.demo_dt > 2.8:
+                            program['alpha'] += 0.01
                 '''
 
-                program['u_model'] = model
+
+
+                program['u_model'] = np.dot(model, self.u_model)
 
                 program['u_view'] = self.u_view
                 program['u_projection'] = self.u_projection
@@ -263,7 +266,7 @@ class GpyWindow:
         def matrix_model(model):
             glm.scale(model, self.size, self.size, self.size)
             glm.rotate(model, self.deg_y, 1, 0, 0)
-            glm.rotate(model, self.deg_x, 0, 1, 0)
+            glm.rotate(model, self.deg_x, 0, 0, 1)
             glm.translate(model, self.mov_x, -self.mov_y, 0)
             # model[3,3] = 1
             return model

@@ -20,7 +20,7 @@ gpyWindow = glumpy_setting.GpyWindow()
 """
 For Visual
 """
-data_info, sleIndex = [], 1
+data_info, sleIndex = [], 0
 for fileIndex in range(sleIndex,sleIndex+1):
     fileID = str(dashCamFileProcess.list50[fileIndex][1])
     print(fileID, fileIndex)
@@ -33,31 +33,36 @@ for fileIndex in range(sleIndex,sleIndex+1):
     sv3DRegion = google_parse.StreetView3DRegion(fileID)
     sv3DRegion.init_region(anchor=None)
 
-    anchor_matrix_whole = sv3DRegion.anchorMatrix
-
     index, ecef_offs, matrix_offs, pano_offs = 0, np.zeros(3), np.eye(4, dtype=np.float32), ''
 
-    for img, gps in info_3d.items():
+    for img, gps in sorted(info_3d.items()):
         for gps, indices in info_3d[img].items():
             print(gps, sv3DRegion.fileMeta['info2ID'][gps], sv3DRegion.fileMeta['id2GPS'][sv3DRegion.fileMeta['info2ID'][gps]])
             sv3D = sv3DRegion.sv3D_Dict[sv3DRegion.fileMeta['info2ID'][gps]]
-            sv3D.apply_global_adjustment()
-            sv3D.apply_local_adjustment()
+            programSV3D = glumpy_setting.ProgramSV3D(data=sv3D.ptCLoudData, name=str(index), point_size=1)
+            programSV3D.global_position(sv3D.lat, sv3D.lon, sv3D.yaw)
+            if index == 0:
+                ecef_offs = np.array(sv3D.ecef)
+                ecef = np.array((0, 0, 0))
+                programSV3D.offset_position(ecef)
+                matrix_offs = programSV3D.u_model
+                pano_offs = sv3DRegion.fileMeta['info2ID'][gps]
+            else:
+                ecef = np.array(sv3D.ecef) - ecef_offs
+                programSV3D.offset_position(ecef)
 
-            programSV3DRegion = glumpy_setting.ProgramSV3DRegion(data=sv3D.ptCLoudData, name=None, point_size=1,
-                                                                 anchor_matrix=anchor_matrix_whole)
-            programSV3DRegion.apply_anchor()
-            gpyWindow.add_program(programSV3DRegion)
+            if needMatchInfo3d:
+                programSV3D.u_model = np.dot(programSV3D.u_model, np.linalg.inv(matrix_offs))
+                programSV3D.info_3d_offs()
+
+            sv3D.matrix_offs = programSV3D.u_model
 
             # reset-------------
-            '''
             vec3 = np.reshape(sv3D.ptCLoudData['a_position'], (256 * 512, 3))
             vec4 = np.hstack([vec3, np.ones((len(vec3), 1))])
             vec4_mul = np.dot(vec4, sv3D.matrix_offs)
-            '''
 
             # output
-            vec4_mul = sv3D.ptCLoudData['a_position']
             for idx in range(len(indices)):
                 sel = info_3d[img][gps][idx]
                 info_3d[img][gps][idx] = []
@@ -66,16 +71,20 @@ for fileIndex in range(sleIndex,sleIndex+1):
                 info_3d[img][gps][idx].append(vec4_mul[sel, 2])
                 data_info.append(vec4_mul[sel, 0:3])
 
+            vec4_out = np.reshape(vec4_mul[:, 0:3], (256, 512, 3))
+            sv3D.ptCLoudData['a_position'] = vec4_out
+
+            programSV3D = glumpy_setting.ProgramSV3D(data=sv3D.ptCLoudData, name=str(index), point_size=1)
+            programSV3D.u_model = np.eye(4, dtype=np.float32)
             # reset--------------
+            gpyWindow.add_program(programSV3D)
 
             # info_3d match
-
             match_info = np.zeros(len(data_info), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
             match_info['a_position'] = data_info
             match_info['a_color'] = [1, 0, 0]
             programMatch = glumpy_setting.ProgramSV3D(data=match_info, name=str(index), point_size=7)
             gpyWindow.add_program(programMatch)
-
             index += 1
 
     """

@@ -91,3 +91,32 @@ def angle_between(v1, v2):
     v1_u = unit_vector(v1)
     v2_u = unit_vector(v2)
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+
+
+def create_plane(n_point=100, sx=10, sy=10, ground_z=-2):
+    n_point = n_point
+    sx, sy = sx, sy
+    ground = np.ones((n_point, n_point)) * ground_z
+    x = np.linspace(-10, 10, n_point)
+    y = np.linspace(-10, 10, n_point)
+    xv, yv = np.meshgrid(x, y)
+
+    data = np.zeros((n_point, n_point), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+
+    data['a_position'] = np.dstack((xv, yv, ground))
+    data['a_color'] = (1, 0, 0)
+    return data
+
+
+def vec_2_panorama(vec):
+    lng = math.atan(-vec[0] / vec[1]) / math.pi * 180
+    if vec[0] >= 0 and vec[1] >= 0:
+        lng += 180
+    elif vec[0] <= 0 and vec[1] >= 0:
+        lng -= 180
+    r = np.linalg.norm(np.array((vec[0], 0, vec[1]), dtype=np.float32))
+    lat = math.atan(vec[2] / r) / math.pi * 180
+
+    return lat, lng
+
+

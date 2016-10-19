@@ -85,13 +85,12 @@ class StreetView3DRegion:
                 data_file.close()
 
 
-
 class StreetView3D:
     def __init__(self, pano_meta, panorama):
         self.panoMeta = pano_meta
         self.panorama = panorama
         self.depthHeader, self.depthMapIndices, self.depthMapPlanes = {}, [], []
-        self.depthMap, self.ptCLoudData = None, None
+        self.depthMap, self.ptCLoudData, self.ptCLoudDataGnd, self.ptCLoudDataGndGrid = None, None, None, None
         self.lat, self.lon, self.yaw = float(pano_meta['Lat']), float(pano_meta['Lon']), float(pano_meta['ProjectionPanoYawDeg'])
         self.ecef = base_process.geo_2_ecef(self.lat, self.lon, 0)
 
@@ -157,6 +156,7 @@ class StreetView3D:
         plane_indices = np.array(self.depthMapIndices)
         depth_map = np.zeros((height * width), dtype=np.float32)
         depth_map[np.nonzero(plane_indices == 0)] = np.nan
+        depth_map_gnd = np.copy(depth_map)
         v = v.reshape((height * width, 3))
 
         # index == 0 refers to the sky
@@ -166,11 +166,17 @@ class StreetView3D:
 
             vec = (plane['nx'], plane['ny'], plane['nz'])
             angle_diff = base_process.angle_between(vec, (0, 0, -1))
-            if angle_diff > 0.1:
+            if angle_diff < 0.1:
                 depth = np.ones((height * width)) * np.nan
+                depth_gnd = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
             else:
                 depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
+                depth_gnd = np.ones((height * width)) * np.nan
+
+            depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
+
             depth_map[np.nonzero(plane_indices == i)] = depth[np.nonzero(plane_indices == i)]
+            depth_map_gnd[np.nonzero(plane_indices == i)] = depth_gnd[np.nonzero(plane_indices == i)]
 
         panorama = scipy.misc.imresize(self.panorama, (height, width), interp='bilinear', mode=None)
         xyz = (np.transpose(v) * np.matlib.repmat(depth_map, 3, 1))
@@ -181,24 +187,53 @@ class StreetView3D:
         con = ~np.isnan(data['a_position'][:, :, 0])
         con &= ~np.isnan(data['a_position'][:, :, 1])
         con &= ~np.isnan(data['a_position'][:, :, 2])
+        #data = data[np.nonzero(con)]
+        data = data.flatten()
 
-        #con &= (data['a_position'][:, :, 0] < 0)
-        #con &= (data['a_position'][:, :, 0] > 0)
-        #con &= (data['a_position'][:, :, 1] < 0)
-        #con &= (data['a_position'][:, :, 1] > 0)
+        """
+        GROUND PLANE!
+        """
+        xyz = (np.transpose(v) * np.matlib.repmat(depth_map_gnd, 3, 1))
+        data_gnd = np.zeros((height, width), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+        data_gnd['a_position'] = np.transpose(xyz).reshape((height, width, 3))
+        data_gnd['a_color'] = np.array(panorama) / 255
 
-        con &= (data['a_position'][:, :, 0] < 10)
-        con &= (data['a_position'][:, :, 0] > -10)
-        con &= (data['a_position'][:, :, 1] < 10)
-        con &= (data['a_position'][:, :, 1] > -10)
-        #con &= (data['a_position'][:, :, 2] < 10)
-        #con &= (data['a_position'][:, :, 2] > -10)
+        con = ~np.isnan(data_gnd['a_position'][:, :, 0])
+        con &= ~np.isnan(data_gnd['a_position'][:, :, 1])
+        con &= ~np.isnan(data_gnd['a_position'][:, :, 2])
 
-        data = data[np.nonzero(con)]
+        con &= (data_gnd['a_position'][:, :, 0] < 10)
+        con &= (data_gnd['a_position'][:, :, 0] > -10)
+        con &= (data_gnd['a_position'][:, :, 1] < 10)
+        con &= (data_gnd['a_position'][:, :, 1] > -10)
+        # con &= (data_gnd['a_position'][:, :, 2] < 10)
+        # con &= (data_gnd['a_position'][:, :, 2] > -10)
+        data_gnd = data_gnd[np.nonzero(con)]
 
         self.depthMap = depth_map.reshape((height, width))
         self.ptCLoudData = data
+        self.ptCLoudDataGnd = data_gnd
         self.fix_spherical_inside_out()
+
+
+    def create_ptcloud_ground_grid(self):
+        data = base_process.create_plane(n_point=80, sx=5, sy=8, ground_z=-2)
+        data = data[np.nonzero(~np.isnan(data['a_position'][:, :, 0]))]
+
+        panorama = self.panorama
+        pano_height, pano_width = panorama.shape[0], panorama.shape[1]
+        for idx in range(len(data['a_position'])):
+            vec = base_process.unit_vector(data['a_position'][idx, :])
+            lat, lng = base_process.vec_2_panorama(vec)
+
+            color_canvas_x = int(((lng + 180) / 360) * pano_width)
+            color_canvas_y = int((-(lat - 90) / 180) * pano_height)
+
+            color = panorama[color_canvas_y, color_canvas_x, :] / 255
+            data['a_color'][idx, :] = color
+
+        data['a_position'][:, 1] = -data['a_position'][:, 1]
+        self.ptCLoudDataGndGrid = data
 
     def fix_spherical_inside_out(self):
         """
@@ -208,6 +243,7 @@ class StreetView3D:
         :return:fixed  ptCLoudData
         """
         self.ptCLoudData['a_position'][:, 1] = -self.ptCLoudData['a_position'][:, 1]
+        self.ptCLoudDataGnd['a_position'][:, 1] = -self.ptCLoudDataGnd['a_position'][:, 1]
         m4 = np.array([[ -1.00000000e+00,   0.00000000e+00,  -1.22464685e-16,   0.00000000e+00],
               [  0.00000000e+00,   1.00000000e+00,   0.00000000e+00,   0.00000000e+00],
               [  1.22464685e-16,   0.00000000e+00,  -1.00000000e+00,   0.00000000e+00],
@@ -215,6 +251,7 @@ class StreetView3D:
 
         self.ptCLoudData['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudData['a_position'],
                                                                     m4=m4)
+        self.ptCLoudDataGnd['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudDataGnd['a_position'], m4=m4)
 
     def show_depth(self):
         # The further, the brighter
@@ -223,9 +260,15 @@ class StreetView3D:
         depth_map[np.nonzero(np.isinf(depth_map))] = 255
         depth_map[np.nonzero(depth_map > 255)] = 255
         depth_map /= 255
-        scipy.misc.imshow(depth_map)
+        #scipy.misc.imshow(depth_map)
         scipy.misc.imshow(self.panorama)
         #scipy.misc.imsave(self.)
+
+    def show_pano(self):
+        panorama = self.panorama
+        #panorama[100-10:100+10, 100-10:100+10, :] = [255, 0, 0]
+
+        scipy.misc.imshow(panorama)
 
     def global_adjustment(self):
         matrix = np.eye(4, dtype=np.float32)
@@ -245,9 +288,22 @@ class StreetView3D:
         self.ptCLoudData['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudData['a_position'],
                                                                     m4=self.matrix_global)
 
+        self.ptCLoudDataGnd['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudDataGnd['a_position'],
+                                                                       m4=self.matrix_global)
+
+#        self.ptCLoudDataGndGrid['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudDataGndGrid['a_position'],
+#                                                                       m4=self.matrix_global)
+
     def apply_local_adjustment(self):
         self.ptCLoudData['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudData['a_position'],
                                                                     m4=self.matrix_local)
+
+        self.ptCLoudDataGnd['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudDataGnd['a_position'],
+                                                                       m4=self.matrix_local)
+
+#        self.ptCLoudDataGndGrid['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudDataGndGrid['a_position'],
+#                                                                       m4=self.matrix_local)
+
 
     def showIndex(self):
         height = self.DepthHeader['panoHeight']
