@@ -159,7 +159,7 @@ class GpyWindow:
         #glm.rotate(u_view, 180, 0, 1, 0)
         #glm.rotate(u_view, -70, 1, 0, 0)
         #glm.rotate(u_view, -30, 0, 1, 0)
-        glm.translate(u_view, 0, 0, -25)
+        glm.translate(u_view, 0, 0, -125)
 
         self.u_view = u_view
 
@@ -266,7 +266,7 @@ class GpyWindow:
         def matrix_model(model):
             glm.scale(model, self.size, self.size, self.size)
             glm.rotate(model, self.deg_y, 1, 0, 0)
-            glm.rotate(model, self.deg_x, 0, 0, 1)
+            glm.rotate(model, self.deg_x, 0, 1, 0)
             glm.translate(model, self.mov_x, -self.mov_y, 0)
             # model[3,3] = 1
             return model

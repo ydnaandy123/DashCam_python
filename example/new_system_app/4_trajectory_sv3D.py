@@ -49,7 +49,7 @@ for fileIndex in range(sleIndex,sleIndex+1):
 
 gpyWindow = glumpy_setting.GpyWindow()
 
-programSV3DRegion = glumpy_setting.ProgramSV3DRegion(data=data, name=None, point_size=1, anchor=anchor_matrix_whole)
+programSV3DRegion = glumpy_setting.ProgramSV3DRegion(data=data, name=None, point_size=1, anchor_matrix=anchor_matrix_whole)
 gpyWindow.add_program(programSV3DRegion)
 
 programAxis = glumpy_setting.ProgramAxis(line_length=5)

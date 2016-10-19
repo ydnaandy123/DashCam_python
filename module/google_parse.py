@@ -189,7 +189,6 @@ class StreetView3D:
         con &= ~np.isnan(data['a_position'][:, :, 2])
         #data = data[np.nonzero(con)]
         data = data.flatten()
-
         """
         GROUND PLANE!
         """

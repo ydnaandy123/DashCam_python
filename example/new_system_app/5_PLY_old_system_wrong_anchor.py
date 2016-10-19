@@ -15,18 +15,18 @@ import glumpy_setting
 # Create dashCamFileProcess and load 50 top Dashcam
 dashCamFileProcess = file_process.DashCamFileProcessor()
 # Manual anchor, but I think this is so wrong.
-anchor = {'panoId': 'JfAAg1RD0myOqNIU0utdNA', 'Lat': 22.622543, 'Lon': 120.285735}
+anchor = {'panoId': 'OAvT8QfoqjB1F6wVX747rw', 'Lat': 25.061674, 'Lon': 121.652461}
 #anchor = {'panoId': '_RAj8Tpy0wDG-5kGbhTwjA', 'Lat': 23.962967, 'Lon': 120.964846}
 # 137 'JfAAg1RD0myOqNIU0utdNA', '22.622543', '120.285735'
 # 731 '_RAj8Tpy0wDG-5kGbhTwjA', '23.962967', '120.964846'
 """
 For Visual
 """
-sleIndex = 0
+sleIndex = 22
 for fileIndex in range(sleIndex,sleIndex+1):
     fileID = str(dashCamFileProcess.list50[fileIndex][1])
     print(fileID, fileIndex)
-    fileID += '_info3d'
+    fileID += '_trajectory'
 
     """
     Create the global metric point cloud,
@@ -44,8 +44,10 @@ for fileIndex in range(sleIndex,sleIndex+1):
 
         if index == 0:
             data = sv3D.ptCLoudData
+            #data = sv3D.ptCLoudDataGnd
         else:
             data = np.concatenate((data, sv3D.ptCLoudData), axis=0)
+            #data = np.concatenate((data, sv3D.ptCLoudDataGnd), axis=0)
 
         index += 1
         #if index > 10:
@@ -72,7 +74,7 @@ xyzzz = np.zeros(len(data), dtype=[('x', 'f4'), ('y', 'f4'), ('z', 'f4'), ('red'
 xyzzz['x'] = data['a_position'][:, 0]
 xyzzz['y'] = data['a_position'][:, 1]
 
-data['a_position'][:, 2] = -2
+#data['a_position'][:, 2] = -2
 
 xyzzz['z'] = data['a_position'][:, 2]
 xyzzz['red'] = data['a_color'][:, 0]
@@ -81,15 +83,16 @@ xyzzz['blue'] = data['a_color'][:, 2]
 el = PlyElement.describe(xyzzz, 'vertex')
 
 #PlyData([el], text=True).write('137_4_ascii.ply')
-PlyData([el]).write('731_ground_binary.ply')
+PlyData([el]).write('978_ground_binary.ply')
+'''
 '''
 data = programSV3DRegion.data
 tri = np.array(triangle.delaunay(data['a_position'][:, 0:2]), dtype=np.uint32)
 data['a_position'][:, 2] = -2
 programGround = glumpy_setting.ProgramPlane(data=data, name=str(index), face=tri)
 gpyWindow.add_program(programGround)
-
-#gpyWindow.add_program(programSV3DRegion)
+'''
+gpyWindow.add_program(programSV3DRegion)
 
 programAxis = glumpy_setting.ProgramAxis(line_length=5)
 gpyWindow.add_program(programAxis)

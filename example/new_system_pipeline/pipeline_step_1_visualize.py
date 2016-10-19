@@ -20,7 +20,7 @@ gpyWindow = glumpy_setting.GpyWindow()
 """
 For Visual
 """
-data_info, sleIndex = [], 1
+data_info, sleIndex = [], 9
 for fileIndex in range(sleIndex,sleIndex+1):
     fileID = str(dashCamFileProcess.list50[fileIndex][1])
     print(fileID, fileIndex)
@@ -34,8 +34,9 @@ for fileIndex in range(sleIndex,sleIndex+1):
     sv3DRegion.init_region(anchor=None)
 
     anchor_matrix_whole = sv3DRegion.anchorMatrix
+    anchorId, anchorLat, anchorLon = sv3DRegion.anchorId, sv3DRegion.anchorLat, sv3DRegion.anchorLon
 
-    index, ecef_offs, matrix_offs, pano_offs = 0, np.zeros(3), np.eye(4, dtype=np.float32), ''
+    index = 0
 
     for img, gps in info_3d.items():
         for gps, indices in info_3d[img].items():
@@ -49,27 +50,18 @@ for fileIndex in range(sleIndex,sleIndex+1):
             programSV3DRegion.apply_anchor()
             gpyWindow.add_program(programSV3DRegion)
 
-            # reset-------------
-            '''
-            vec3 = np.reshape(sv3D.ptCLoudData['a_position'], (256 * 512, 3))
-            vec4 = np.hstack([vec3, np.ones((len(vec3), 1))])
-            vec4_mul = np.dot(vec4, sv3D.matrix_offs)
-            '''
-
             # output
             vec4_mul = sv3D.ptCLoudData['a_position']
             for idx in range(len(indices)):
                 sel = info_3d[img][gps][idx]
                 info_3d[img][gps][idx] = []
-                info_3d[img][gps][idx].append(vec4_mul[sel, 0])
-                info_3d[img][gps][idx].append(vec4_mul[sel, 1])
-                info_3d[img][gps][idx].append(vec4_mul[sel, 2])
-                data_info.append(vec4_mul[sel, 0:3])
-
-            # reset--------------
+                info_3d[img][gps][idx].append(float(vec4_mul[sel, 0]))
+                info_3d[img][gps][idx].append(float(vec4_mul[sel, 1]))
+                info_3d[img][gps][idx].append(float(vec4_mul[sel, 2]))
+                #data_info.append(vec4_mul[sel, 0:3])
+                data_info.append([float(vec4_mul[sel, 0]), float(vec4_mul[sel, 1]), float(vec4_mul[sel, 2])])
 
             # info_3d match
-
             match_info = np.zeros(len(data_info), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
             match_info['a_position'] = data_info
             match_info['a_color'] = [1, 0, 0]
@@ -81,18 +73,14 @@ for fileIndex in range(sleIndex,sleIndex+1):
     """
     For output
     """
-    #with open('/home/andy/src/DashCam/json/info_2_gps/' + fileID + '_2_gps.json', 'w') as outfile:
-    #    simplejson.dump(info_3d, outfile)
-    #    outfile.close()
-    #
-    #with open('/home/andy/src/DashCam/json/info_2_gps_offs/' + fileID + '_pano_offs.json', 'w') as outfile:
-    #    file_meta = {'pano_offs': pano_offs}
-    #    json.dump(file_meta, outfile)
+    with open('/home/andy/src/DashCam/json/info_2_gps/' + fileID + '_2_gps.json', 'w') as outfile:
+        json.dump(info_3d, outfile)
+        outfile.close()
 
-    """
-    For Visualize
-    """
-    print(pano_offs, '\n',  ecef_offs, '\n', matrix_offs)
+    with open('/home/andy/src/DashCam/json/info_2_gps_offs/' + fileID + '_pano_offs.json', 'w') as outfile:
+        file_meta = {'anchorId': anchorId, 'anchorLat': anchorLat, 'anchorLon': anchorLon}
+        json.dump(file_meta, outfile)
+
 
 programAxis = glumpy_setting.ProgramAxis(line_length=5)
 gpyWindow.add_program(programAxis)

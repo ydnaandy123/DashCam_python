@@ -17,7 +17,7 @@ panoFetcher = google_store.PanoFetcher(zoom, radius)
 dashCamFileProcess = file_process.DashCamFileProcessor()
 
 # Select one of the fileName among the 50 selected files
-for i in range(50):
+for i in range(19, 20):
 
     index = i
     fileID = str(dashCamFileProcess.list50[index][1])
