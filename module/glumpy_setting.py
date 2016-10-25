@@ -144,6 +144,29 @@ class ProgramSV3DRegion:
         self.data['a_position'] = base_process.sv3d_apply_m4(data=self.data['a_position'], m4=np.linalg.inv(matrix))
 
 
+class ProgramSFM3DRegion:
+    def __init__(self, data=None, name='ProgramSFM3DRegion', point_size=1, anchor_matrix=np.eye(4, dtype=np.float32), alpha=1.0):
+        self.data = data.view(gloo.VertexBuffer)
+        self.anchor_matrix = anchor_matrix
+
+        program = gloo.Program(vertexPoint, fragmentSelect)
+        #program = gloo.Program(vertexPoint, fragmentAlpha)
+        program.bind(self.data)
+
+        program['color'] = (1, 0, 0, 1)
+        program['color_sel'] = 1
+        #program['alpha'] = alpha
+        program['a_pointSize'] = point_size
+        program['u_model'] = np.eye(4, dtype=np.float32)
+        program['u_view'] = np.eye(4, dtype=np.float32)
+
+        self.name = name
+        self.program = program
+        self.draw_mode = gl.GL_POINTS
+        self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
+            4, dtype=np.float32)
+
+
 class GpyWindow:
     def __init__(self):
         self.programs = []
@@ -154,6 +177,7 @@ class GpyWindow:
         self.deg_x, self.deg_y, self.mov_x, self.mov_y, self.size, self.zoom, self.radius = 0, 0, 0, 0, 1, -200, 200
         self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
             4, dtype=np.float32)
+        self.color_sel = 1
 
         u_view = np.eye(4, dtype=np.float32)
         #glm.rotate(u_view, 180, 0, 1, 0)
@@ -200,6 +224,10 @@ class GpyWindow:
                     program.draw(program_object.draw_mode, program_object.face)
                 else:
                     program.draw(program_object.draw_mode)
+
+                if program_object.name == 'ProgramSFM3DRegion':
+                    program['color_sel'] = self.color_sel
+
 
 
         @window.event
@@ -262,6 +290,7 @@ class GpyWindow:
             print('Key pressed (symbol=%s, modifiers=%s)' % (symbol, modifiers))
             # self.program['color_sel'] = 1 - self.program['color_sel']
             '''
+            self.color_sel = 1 - self.color_sel
 
         def matrix_model(model):
             glm.scale(model, self.size, self.size, self.size)

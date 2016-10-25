@@ -8,7 +8,9 @@
       <w>panodoc</w>
       <w>panoid</w>
       <w>panometa</w>
+      <w>pointcloud</w>
       <w>ptcloud</w>
+      <w>ransac</w>
     </words>
   </dictionary>
 </component>

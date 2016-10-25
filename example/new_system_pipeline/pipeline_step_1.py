@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 # ==============================================================
+# This is old version
+# Please refer to the pipeline_step_1_visualize for the new version
 # Step.1
 # Transform the point in SFM to Google (SV3D)
 # ==============================================================
