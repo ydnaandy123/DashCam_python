@@ -16,21 +16,7 @@ class SFM3DRegion:
             self.ransacResult = json.load(data_file)
             data_file.close()
         self.ptcloudData = parse_point_cloud_sfm(self.ransacResult)
-        matrix = np.array(self.ransacResult['transformation'], dtype=np.float32)
-        matrix = np.append(matrix, [0.0, 0.0, 0.0, 1.0])
-        self.matrix = np.reshape(matrix, (4, 4))
-        print(self.matrix)
-        self.matrix = np.transpose(self.matrix)
-        print(self.matrix)
-
-        #self.ptcloudData['a_position'] = base_process.sv3d_apply_m4(data=self.ptcloudData['a_position'],
-        #                                                    m4=self.matrix)
-
-
-def sv3d_apply_m4(data, m4):
-    vec4 = np.hstack([data, np.ones((len(data), 1))])
-    vec4_mul = np.dot(vec4, m4)
-    return vec4_mul[:, 0:3]
+        self.matrix = parse_matrix(self.ransacResult['transformation'])
 
 
 def parse_point_cloud_sfm(ransac_result):
@@ -44,3 +30,12 @@ def parse_point_cloud_sfm(ransac_result):
         cur += 1
     data['a_color'] /= 255.0
     return data
+
+
+def parse_matrix(transformation):
+    matrix = np.array(transformation, dtype=np.float32)
+    matrix = np.append(matrix, [0.0, 0.0, 0.0, 1.0])
+    matrix = np.reshape(matrix, (4, 4))
+    matrix = np.transpose(matrix)
+    return matrix
+

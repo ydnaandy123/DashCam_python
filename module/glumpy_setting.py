@@ -114,16 +114,16 @@ class ProgramPlane:
 
 
 class ProgramSV3DRegion:
-    def __init__(self, data=None, name='ProgramSV3DRegion', point_size=1, anchor_matrix=np.eye(4, dtype=np.float32), alpha=1.0):
+    def __init__(self, data=None, name='ProgramSV3DRegion',
+                 point_size=1, anchor_matrix=np.eye(4, dtype=np.float32), alpha=1.0, is_inverse=False):
         self.data = data.view(gloo.VertexBuffer)
         self.anchor_matrix = anchor_matrix
+        self.anchor_matrix_inv = np.linalg.inv(self.anchor_matrix)
+        self.isInverse = is_inverse
 
-        #program = gloo.Program(vertexPoint, fragmentSelect)
         program = gloo.Program(vertexPoint, fragmentAlpha)
         program.bind(self.data)
 
-        #program['color'] = (1, 0, 0, 1)
-        #program['color_sel'] = 1
         program['alpha'] = alpha
         program['a_pointSize'] = point_size
         program['u_model'] = np.eye(4, dtype=np.float32)
@@ -135,8 +135,16 @@ class ProgramSV3DRegion:
         self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
             4, dtype=np.float32)
 
-    def apply_anchor(self):
-        self.data['a_position'] = base_process.sv3d_apply_m4(data=self.data['a_position'], m4=np.linalg.inv(self.anchor_matrix))
+    def apply_anchor_flip(self):
+        if self.isInverse:
+            self.data['a_position'] = base_process.sv3d_apply_m4(
+                data=self.data['a_position'],m4=self.anchor_matrix)
+        else:
+            self.data['a_position'] = \
+                self.data['a_position'] = base_process.sv3d_apply_m4(
+                data=self.data['a_position'], m4=self.anchor_matrix_inv)
+
+        self.isInverse = not self.isInverse
 
     def apply_anchor_plus_rotate(self):
         matrix = self.anchor_matrix
@@ -145,17 +153,18 @@ class ProgramSV3DRegion:
 
 
 class ProgramSFM3DRegion:
-    def __init__(self, data=None, name='ProgramSFM3DRegion', point_size=1, anchor_matrix=np.eye(4, dtype=np.float32), alpha=1.0):
+    def __init__(self, data=None, name='ProgramSFM3DRegion',
+                 point_size=1, matrix=np.eye(4, dtype=np.float32), is_aligned=False):
         self.data = data.view(gloo.VertexBuffer)
-        self.anchor_matrix = anchor_matrix
+        self.matrix = matrix
+        self.matrix_inv = np.linalg.inv(self.matrix)
+        self.isAligned = is_aligned
 
         program = gloo.Program(vertexPoint, fragmentSelect)
-        #program = gloo.Program(vertexPoint, fragmentAlpha)
         program.bind(self.data)
 
         program['color'] = (1, 0, 0, 1)
         program['color_sel'] = 1
-        #program['alpha'] = alpha
         program['a_pointSize'] = point_size
         program['u_model'] = np.eye(4, dtype=np.float32)
         program['u_view'] = np.eye(4, dtype=np.float32)
@@ -166,6 +175,15 @@ class ProgramSFM3DRegion:
         self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
             4, dtype=np.float32)
 
+    def align_flip(self):
+        if self.isAligned:
+            self.data['a_position'] = \
+                base_process.sv3d_apply_m4(data=self.data['a_position'], m4=self.matrix_inv)
+        else:
+            self.data['a_position'] = \
+                base_process.sv3d_apply_m4(data=self.data['a_position'], m4=self.matrix)
+
+        self.isAligned = not self.isAligned
 
 class GpyWindow:
     def __init__(self):
@@ -177,7 +195,6 @@ class GpyWindow:
         self.deg_x, self.deg_y, self.mov_x, self.mov_y, self.size, self.zoom, self.radius = 0, 0, 0, 0, 1, -200, 200
         self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
             4, dtype=np.float32)
-        self.color_sel = 1
 
         u_view = np.eye(4, dtype=np.float32)
         #glm.rotate(u_view, 180, 0, 1, 0)
@@ -224,10 +241,6 @@ class GpyWindow:
                     program.draw(program_object.draw_mode, program_object.face)
                 else:
                     program.draw(program_object.draw_mode)
-
-                if program_object.name == 'ProgramSFM3DRegion':
-                    program['color_sel'] = self.color_sel
-
 
 
         @window.event
@@ -290,7 +303,19 @@ class GpyWindow:
             print('Key pressed (symbol=%s, modifiers=%s)' % (symbol, modifiers))
             # self.program['color_sel'] = 1 - self.program['color_sel']
             '''
-            self.color_sel = 1 - self.color_sel
+            #print(symbol)
+            if symbol == 67:  # c --> change color
+                for program_object in self.programs:
+                    if program_object.name == 'ProgramSFM3DRegion':
+                        program_object.program['color_sel'] = 1 - program_object.program['color_sel']
+            elif symbol == 65:  # a --> align sfm to google
+                for program_object in self.programs:
+                    if program_object.name == 'ProgramSFM3DRegion':
+                        program_object.align_flip()
+            elif symbol == 73:  # i --> inverse google according anchor
+                for program_object in self.programs:
+                    if program_object.name == 'ProgramSV3DRegion':
+                        program_object.apply_anchor_flip()
 
         def matrix_model(model):
             glm.scale(model, self.size, self.size, self.size)
