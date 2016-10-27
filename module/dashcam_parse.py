@@ -15,12 +15,13 @@ class SFM3DRegion:
         with open(self.dataDir) as data_file:
             self.ransacResult = json.load(data_file)
             data_file.close()
-        self.ptcloudData = parse_point_cloud_sfm(self.ransacResult)
+        self.ptcloudData = parse_point_cloud_sfm(self.ransacResult['points'])
+        self.trajectoryData = parse_trajectory(self.ransacResult['trajectory'])
+        self.trajectoryJSON = self.ransacResult['trajectory']
         self.matrix = parse_matrix(self.ransacResult['transformation'])
 
 
-def parse_point_cloud_sfm(ransac_result):
-    points_sfm = ransac_result['points']
+def parse_point_cloud_sfm(points_sfm):
     data_len = len(points_sfm.keys())
     data = np.zeros(data_len, dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
     cur = 0
@@ -31,6 +32,17 @@ def parse_point_cloud_sfm(ransac_result):
     data['a_color'] /= 255.0
     return data
 
+
+def parse_trajectory(trajectory):
+    data_len = len(trajectory.keys())
+    data = np.zeros(data_len, dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+    cur = 0
+    for key, value in sorted(trajectory.items()):
+        #print(key)
+        data[cur]['a_position'] = value
+        cur += 1
+    #data['a_color'] /= 255.0
+    return data
 
 def parse_matrix(transformation):
     matrix = np.array(transformation, dtype=np.float32)

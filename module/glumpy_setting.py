@@ -185,6 +185,44 @@ class ProgramSFM3DRegion:
 
         self.isAligned = not self.isAligned
 
+class programTrajectory:
+    def __init__(self, data=None, name='programTrajectory',
+                 point_size=5, matrix=np.eye(4, dtype=np.float32), is_aligned=False):
+        self.data = data.view(gloo.VertexBuffer)
+        self.matrix = matrix
+        self.matrix_inv = np.linalg.inv(self.matrix)
+        self.isAligned = is_aligned
+
+        program = gloo.Program(vertexPoint, fragmentSelect)
+        program.bind(self.data)
+
+        program['color'] = (0, 0, 1, 1)
+        program['color_sel'] = 0
+        program['a_pointSize'] = point_size
+        program['u_model'] = np.eye(4, dtype=np.float32)
+        program['u_view'] = np.eye(4, dtype=np.float32)
+
+        self.name = name
+        self.program = program
+        self.draw_mode = gl.GL_POINTS
+        self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
+            4, dtype=np.float32)
+
+    def align_flip(self):
+        if self.isAligned:
+            self.data['a_position'] = \
+                base_process.sv3d_apply_m4(data=self.data['a_position'], m4=self.matrix_inv)
+        else:
+            self.data['a_position'] = \
+                base_process.sv3d_apply_m4(data=self.data['a_position'], m4=self.matrix)
+
+        self.isAligned = not self.isAligned
+
+    def apply_m4(self, m4):
+        self.data['a_position'] = \
+            base_process.sv3d_apply_m4(data=self.data['a_position'], m4=m4)
+
+
 class GpyWindow:
     def __init__(self):
         self.programs = []
@@ -310,7 +348,7 @@ class GpyWindow:
                         program_object.program['color_sel'] = 1 - program_object.program['color_sel']
             elif symbol == 65:  # a --> align sfm to google
                 for program_object in self.programs:
-                    if program_object.name == 'ProgramSFM3DRegion':
+                    if program_object.name == 'ProgramSFM3DRegion' or program_object.name == 'programTrajectory':
                         program_object.align_flip()
             elif symbol == 73:  # i --> inverse google according anchor
                 for program_object in self.programs:

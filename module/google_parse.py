@@ -45,14 +45,14 @@ class StreetView3DRegion:
                 print('anchor is:', panoId, self.fileMeta['id2GPS'][panoId])
                 self.anchorId, self.anchorLat, self.anchorLon = \
                     panoId, float(self.fileMeta['id2GPS'][panoId][0]), float(self.fileMeta['id2GPS'][panoId][1])
-                self.anchorECEF = base_process.geo_2_ecef(self.anchorLat, self.anchorLon, 0)
+                self.anchorECEF = base_process.geo_2_ecef(self.anchorLat, self.anchorLon, 22)
                 break
         else:
             print('use the anchor')
             print('anchor is:', anchor['panoId'], anchor['Lat'], anchor['Lon'])
             self.anchorId, self.anchorLat, self.anchorLon = \
                 anchor['panoId'], anchor['Lat'], anchor['Lon']
-            self.anchorECEF = base_process.geo_2_ecef(self.anchorLat, self.anchorLon, 0)
+            self.anchorECEF = base_process.geo_2_ecef(self.anchorLat, self.anchorLon, 22)
 
         # The anchor
         pano_id_dir = os.path.join(self.dataDir, self.anchorId)
@@ -92,7 +92,7 @@ class StreetView3D:
         self.depthHeader, self.depthMapIndices, self.depthMapPlanes = {}, [], []
         self.depthMap, self.ptCLoudData, self.ptCLoudDataGnd, self.ptCLoudDataGndGrid = None, None, None, None
         self.lat, self.lon, self.yaw = float(pano_meta['Lat']), float(pano_meta['Lon']), float(pano_meta['ProjectionPanoYawDeg'])
-        self.ecef = base_process.geo_2_ecef(self.lat, self.lon, 0)
+        self.ecef = base_process.geo_2_ecef(self.lat, self.lon, 22)
 
         self.decode_depth_map(pano_meta['rawDepth'])
         if self.depthHeader['panoHeight'] != 256 or self.depthHeader['panoWidth'] != 512:
@@ -173,7 +173,7 @@ class StreetView3D:
                 depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
                 depth_gnd = np.ones((height * width)) * np.nan
 
-            depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
+            #depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
 
             depth_map[np.nonzero(plane_indices == i)] = depth[np.nonzero(plane_indices == i)]
             depth_map_gnd[np.nonzero(plane_indices == i)] = depth_gnd[np.nonzero(plane_indices == i)]
@@ -187,8 +187,8 @@ class StreetView3D:
         con = ~np.isnan(data['a_position'][:, :, 0])
         con &= ~np.isnan(data['a_position'][:, :, 1])
         con &= ~np.isnan(data['a_position'][:, :, 2])
-        #data = data[np.nonzero(con)]
-        data = data.flatten()
+        data = data[np.nonzero(con)]
+        #data = data.flatten()
         """
         GROUND PLANE!
         """

@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 # ==============================================================
-# Step.2
-# Align the SFM with Google
+# Step.4
+# Output the trajectory in (lat, lon) form
 # ==============================================================
 import numpy as np
+import json
 import sys
 
 sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')  # use the module under 'module'
@@ -11,18 +12,20 @@ import file_process
 import google_parse
 import glumpy_setting
 import dashcam_parse
+import base_process
 
 
-sleIndex = 6
-createSFM = True
+sleIndex = 21
+createSFM = False
+createTrajectory = False
 createSV = True
+needAlign = True
 needMatchInfo3d = True
 needVisual = True
 mapType = '_info3d'
 # Create dashCamFileProcess and load 50 top Dashcam
 dashCamFileProcess = file_process.DashCamFileProcessor()
-# Manual anchor, but I think this is so wrong.
-#anchor = {'panoId': 'OAvT8QfoqjB1F6wVX747rw', 'Lat': 25.061674, 'Lon': 121.652461}
+# anchor is sorted and pick the first one
 """
 Process the select file
 """
@@ -32,19 +35,31 @@ for fileIndex in range(sleIndex,sleIndex+1):
     """
     Create the sfm point cloud
     """
+    sfm3DRegion = dashcam_parse.SFM3DRegion(fileID)
     if createSFM:
-        sfm3DRegion = dashcam_parse.SFM3DRegion(fileID)
+        programSFM3DRegion = glumpy_setting.ProgramSFM3DRegion(data=sfm3DRegion.ptcloudData, name='ProgramSFM3DRegion',
+                                                               point_size=1, matrix=sfm3DRegion.matrix)
+        if needAlign:
+            programSFM3DRegion.align_flip()
+    """
+    Create the trajectory
+    """
+    if createTrajectory:
+        programTrajectory = glumpy_setting.programTrajectory(data=sfm3DRegion.trajectoryData, name='programTrajectory',
+                                                             point_size=6, matrix=sfm3DRegion.matrix)
+        if needAlign:
+            programTrajectory.align_flip()
 
     """
     Create the global metric point cloud,
     then set the region anchor
     """
-    if createSV:
-        fileID += mapType
-        sv3DRegion = google_parse.StreetView3DRegion(fileID)
-        sv3DRegion.init_region(anchor=None)
-        anchor_matrix_whole = sv3DRegion.anchorMatrix
+    fileID += mapType
+    sv3DRegion = google_parse.StreetView3DRegion(fileID)
+    sv3DRegion.init_region(anchor=None)
+    anchor_matrix_whole = sv3DRegion.anchorMatrix
 
+    if createSV:
         index = 0
         for sv3D_id, sv3D in sorted(sv3DRegion.sv3D_Dict.items()):
             sv3D.apply_global_adjustment()  # Absolute position on earth
@@ -59,7 +74,10 @@ for fileIndex in range(sleIndex,sleIndex+1):
             #if index > 10:
             #    break
 
-
+        programSV3DRegion = glumpy_setting.ProgramSV3DRegion(data=data, name='ProgramSV3DRegion',
+                                                             point_size=1, anchor_matrix=anchor_matrix_whole)
+        if needMatchInfo3d:
+            programSV3DRegion.apply_anchor_flip()
 """
 For Visualize
 """
@@ -67,15 +85,12 @@ if needVisual:
     gpyWindow = glumpy_setting.GpyWindow()
 
     if createSFM:
-        programSV3DRegion = glumpy_setting.ProgramSFM3DRegion(data=sfm3DRegion.ptcloudData, name='ProgramSFM3DRegion',
-                                                              point_size=1, matrix=sfm3DRegion.matrix)
-        gpyWindow.add_program(programSV3DRegion)
+        gpyWindow.add_program(programSFM3DRegion)
+
+    if createTrajectory:
+        gpyWindow.add_program(programTrajectory)
 
     if createSV:
-        programSV3DRegion = glumpy_setting.ProgramSV3DRegion(data=data, name='ProgramSV3DRegion',
-                                                             point_size=1, anchor_matrix=anchor_matrix_whole)
-        if needMatchInfo3d:
-            programSV3DRegion.apply_anchor_flip()
         gpyWindow.add_program(programSV3DRegion)
 
     programAxis = glumpy_setting.ProgramAxis(line_length=5)
