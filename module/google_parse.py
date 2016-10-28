@@ -214,6 +214,8 @@ class StreetView3D:
         self.ptCLoudDataGnd = data_gnd
         self.fix_spherical_inside_out()
 
+        self.show_depth()
+
 
     def create_ptcloud_ground_grid(self):
         data = base_process.create_plane(n_point=80, sx=5, sy=8, ground_z=-2)
@@ -259,7 +261,7 @@ class StreetView3D:
         depth_map[np.nonzero(np.isinf(depth_map))] = 255
         depth_map[np.nonzero(depth_map > 255)] = 255
         depth_map /= 255
-        #scipy.misc.imshow(depth_map)
+        scipy.misc.imshow(depth_map)
         scipy.misc.imshow(self.panorama)
         #scipy.misc.imsave(self.)
 

@@ -52,7 +52,7 @@ for fileIndex in range(sleIndex,sleIndex+1):
         index += 1
         #if index > 10:
         #    break
-        #break
+        break
 
 
 gpyWindow = glumpy_setting.GpyWindow()

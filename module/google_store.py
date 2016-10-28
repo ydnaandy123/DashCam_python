@@ -176,18 +176,19 @@ class PanoFetcher:
             print('The region "' + file_id + '" has not created yet.')
             return
 
-    def trajectory(self, file_id, path_point_set_trajectory):
-        pano_set, id_2_gps, info_2_id = set(), {}, {}
+    def trajectory(self, file_id, path_trajectory):
+        pano_set, id_2_gps, keyframe_2_id = set(), {}, {}
         file_id += '_trajectory'
         if self.file_dir_exist(file_id):
             print('This trajectory file already exists.')
         else:
             print('Create new trajectory panometa.')
-            for pathPoint in path_point_set_trajectory:
-                [lat, lon] = pathPoint
+            for keyframe, gps in sorted(path_trajectory.items()):
+                lat, lon, h = gps
                 pano = get_panorama_metadata(lat=lat, lon=lon, radius=self.radius)
-                print(lat, lon, pano.PanoId)
+                print(keyframe, lat, lon, pano.PanoId)
                 id_2_gps[pano.PanoId] = [pano.Lat, pano.Lon]
+                keyframe_2_id[keyframe] = pano.PanoId
                 if pano.PanoId not in pano_set:
                     pano_set.add(pano.PanoId)
                     img = get_panorama(pano.PanoId, zoom=self.zoom)
@@ -202,7 +203,7 @@ class PanoFetcher:
                     store_dir = storePath + file_id + '/' + pano.PanoId
                     self.store_pano(store_dir, pano_basic, img)
             with open(storePath + file_id + '/fileMeta.json', 'w') as outfile:
-                file_meta = {'id2GPS': id_2_gps}
+                file_meta = {'id2GPS': id_2_gps, 'keyframe_2_id': keyframe_2_id}
                 print("id2GPS's length: %d" % len(id_2_gps))
                 json.dump(file_meta, outfile)
                 outfile.close()

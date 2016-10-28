@@ -46,16 +46,13 @@ class DashCamFileProcessor:
     def get_path_trajectory(file_id=None, file_index=None):
         if file_id is not None:
             print('fileID: ' + file_id)
-            with open(storePath + 'newSystem_deep_match/' + file_id + '/lat_lon_result.json') as data_file:
+            with open(storePath + 'trajectory_gps/' + file_id + '_info3d_trajectory_gps.json') as data_file:
                 trajectory = json.load(data_file)
                 data_file.close()
         elif file_index is not None:
             trajectory = None
             print('fileIndex: ' + file_index)
-        path_point_list_trajectory = []
-        for img, gps in sorted(trajectory.items()):
-            path_point_list_trajectory.append(gps)
-        return path_point_list_trajectory
+        return trajectory['trajectory_gps']
 
     @staticmethod
     def get_trajectory_anchor(file_id=None, file_index=None):
