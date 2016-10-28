@@ -173,7 +173,7 @@ class StreetView3D:
                 depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
                 depth_gnd = np.ones((height * width)) * np.nan
 
-            #depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
+            depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
 
             depth_map[np.nonzero(plane_indices == i)] = depth[np.nonzero(plane_indices == i)]
             depth_map_gnd[np.nonzero(plane_indices == i)] = depth_gnd[np.nonzero(plane_indices == i)]
@@ -258,7 +258,7 @@ class StreetView3D:
         # The further, the brighter
         # Inverse to inside-out
         depth_map = self.depthMap * 255 / 50
-        depth_map[np.nonzero(np.isinf(depth_map))] = 255
+        depth_map[np.nonzero(np.isnan(depth_map))] = 255
         depth_map[np.nonzero(depth_map > 255)] = 255
         depth_map /= 255
         scipy.misc.imshow(depth_map)
