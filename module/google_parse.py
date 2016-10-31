@@ -49,9 +49,9 @@ class StreetView3DRegion:
                 break
         else:
             print('use the anchor')
-            print('anchor is:', anchor['panoId'], anchor['Lat'], anchor['Lon'])
+            print('anchor is:', anchor['anchorId'], anchor['anchorLat'], anchor['anchorLon'])
             self.anchorId, self.anchorLat, self.anchorLon = \
-                anchor['panoId'], anchor['Lat'], anchor['Lon']
+                anchor['anchorId'], anchor['anchorLat'], anchor['anchorLon']
             self.anchorECEF = base_process.geo_2_ecef(self.anchorLat, self.anchorLon, 22)
 
         # The anchor
@@ -166,14 +166,14 @@ class StreetView3D:
 
             vec = (plane['nx'], plane['ny'], plane['nz'])
             angle_diff = base_process.angle_between(vec, (0, 0, -1))
-            if angle_diff < 0.1:
+            if angle_diff < 0.2:
                 depth = np.ones((height * width)) * np.nan
                 depth_gnd = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
             else:
                 depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
                 depth_gnd = np.ones((height * width)) * np.nan
 
-            depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
+            #depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
 
             depth_map[np.nonzero(plane_indices == i)] = depth[np.nonzero(plane_indices == i)]
             depth_map_gnd[np.nonzero(plane_indices == i)] = depth_gnd[np.nonzero(plane_indices == i)]
@@ -201,10 +201,10 @@ class StreetView3D:
         con &= ~np.isnan(data_gnd['a_position'][:, :, 1])
         con &= ~np.isnan(data_gnd['a_position'][:, :, 2])
 
-        con &= (data_gnd['a_position'][:, :, 0] < 10)
-        con &= (data_gnd['a_position'][:, :, 0] > -10)
-        con &= (data_gnd['a_position'][:, :, 1] < 10)
-        con &= (data_gnd['a_position'][:, :, 1] > -10)
+        #con &= (data_gnd['a_position'][:, :, 0] < 10)
+        #con &= (data_gnd['a_position'][:, :, 0] > -10)
+        #con &= (data_gnd['a_position'][:, :, 1] < 10)
+        #con &= (data_gnd['a_position'][:, :, 1] > -10)
         # con &= (data_gnd['a_position'][:, :, 2] < 10)
         # con &= (data_gnd['a_position'][:, :, 2] > -10)
         data_gnd = data_gnd[np.nonzero(con)]
@@ -213,8 +213,6 @@ class StreetView3D:
         self.ptCLoudData = data
         self.ptCLoudDataGnd = data_gnd
         self.fix_spherical_inside_out()
-
-        self.show_depth()
 
 
     def create_ptcloud_ground_grid(self):
@@ -261,9 +259,9 @@ class StreetView3D:
         depth_map[np.nonzero(np.isnan(depth_map))] = 255
         depth_map[np.nonzero(depth_map > 255)] = 255
         depth_map /= 255
-        scipy.misc.imshow(depth_map)
-        scipy.misc.imshow(self.panorama)
-        #scipy.misc.imsave(self.)
+        #scipy.misc.imshow(depth_map)
+        #scipy.misc.imshow(self.panorama)
+        scipy.misc.imsave('depth.png', depth_map)
 
     def show_pano(self):
         panorama = self.panorama

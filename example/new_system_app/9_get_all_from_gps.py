@@ -24,3 +24,6 @@ fileID = 'testttt'
 """
 sv3DRegion = google_parse.StreetView3DRegion(fileID)
 sv3DRegion.init_region(anchor=None)
+for key in sv3DRegion.sv3D_Dict:
+    sv = sv3DRegion.sv3D_Dict[key]
+    sv.show_depth()

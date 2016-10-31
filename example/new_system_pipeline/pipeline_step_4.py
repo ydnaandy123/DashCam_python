@@ -10,10 +10,10 @@ sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')  # use the 
 import file_process
 import google_store
 
-sleIndex = 1
+sleIndex = 0
 
 # Create PanoFetcher
-zoom, radius = 1, 10
+zoom, radius = 1, 30
 panoFetcher = google_store.PanoFetcher(zoom, radius)
 
 # Create dashCamFileProcess and load 50 top Dashcam
@@ -21,7 +21,7 @@ dashCamFileProcess = file_process.DashCamFileProcessor()
 
 # Select one of the fileName among the 50 selected files
 if __name__ == '__main__':
-    for i in range(sleIndex, sleIndex+1):
+    for i in range(46, 49+1):
 
         index = i
         fileID = str(dashCamFileProcess.list50[index][1])
@@ -43,7 +43,7 @@ if __name__ == '__main__':
         #    print(pathPoint)
         #    [lat, lon] = pathPoint.split(',')
         #    break
-        panoFetcher.bfs_aug('testttt', (24.797163,120.9965176), 10)
+        #panoFetcher.bfs_aug(fileID, (lat, lon), 10)
 
         """
         3. use info_3d plus BFS
@@ -54,6 +54,6 @@ if __name__ == '__main__':
         """
         4. use trajectory
         """
-        #path_trajectory = dashCamFileProcess.get_path_trajectory(file_id=fileID)
-        #panoFetcher.trajectory(fileID, path_trajectory)
+        path_trajectory = dashCamFileProcess.get_path_trajectory(file_id=fileID)
+        panoFetcher.trajectory(fileID, path_trajectory)
 
