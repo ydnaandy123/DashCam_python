@@ -33,6 +33,8 @@ class StreetView3DRegion:
         self.anchorECEF, self.anchorMatrix = np.zeros(3), np.eye(4, dtype=np.float32)
         self.sv3D_Dict = {}
 
+        self.QQ = False
+
     def init_region(self, anchor=None):
         """
         Initialize the local region
@@ -55,19 +57,23 @@ class StreetView3DRegion:
             self.anchorECEF = base_process.geo_2_ecef(self.anchorLat, self.anchorLon, 22)
 
         # The anchor
-        pano_id_dir = os.path.join(self.dataDir, self.anchorId)
-        panorama = scipy.misc.imread(pano_id_dir + '.jpg').astype(np.float)
-        with open(pano_id_dir + '.json') as data_file:
-            pano_meta = json.load(data_file)
-            sv3d = StreetView3D(pano_meta, panorama)
-            sv3d.create_ptcloud(self.sphericalRay)
-            sv3d.global_adjustment()
-            sv3d.local_adjustment(self.anchorECEF)
-            self.sv3D_Dict[self.anchorId] = sv3d
-            self.anchorMatrix = np.dot(sv3d.matrix_local, sv3d.matrix_global)
-            data_file.close()
+        try:
+            pano_id_dir = os.path.join(self.dataDir, self.anchorId)
+            panorama = scipy.misc.imread(pano_id_dir + '.jpg').astype(np.float)
+            with open(pano_id_dir + '.json') as data_file:
+                pano_meta = json.load(data_file)
+                sv3d = StreetView3D(pano_meta, panorama)
+                sv3d.create_ptcloud(self.sphericalRay)
+                sv3d.global_adjustment()
+                sv3d.local_adjustment(self.anchorECEF)
+                self.sv3D_Dict[self.anchorId] = sv3d
+                self.anchorMatrix = np.dot(sv3d.matrix_local, sv3d.matrix_global)
+                data_file.close()
 
-        self.create_region()
+        except:
+            print('no anchor file QQ')
+            self.QQ = True
+
 
     def create_region(self):
         for panoId in self.fileMeta['id2GPS']:
@@ -166,7 +172,7 @@ class StreetView3D:
 
             vec = (plane['nx'], plane['ny'], plane['nz'])
             angle_diff = base_process.angle_between(vec, (0, 0, -1))
-            if angle_diff < 0.2:
+            if angle_diff < 0.3:
                 depth = np.ones((height * width)) * np.nan
                 depth_gnd = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
             else:

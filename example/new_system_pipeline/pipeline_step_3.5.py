@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # ==============================================================
 # Step.3
-# Output the trajectory in (lat, lon, h) form
+# Output the trajectory in (x, y, z) form
 # ==============================================================
 import numpy as np
 import json
@@ -16,9 +16,9 @@ import base_process
 
 
 sleIndex = 49
-createSFM = True
+createSFM = False
 createTrajectory = True
-createSV = True
+createSV = False
 needAlign = True
 needMatchInfo3d = True
 needVisual = True
@@ -29,7 +29,7 @@ dashCamFileProcess = file_process.DashCamFileProcessor()
 """
 Process the select file
 """
-for fileIndex in range(sleIndex,sleIndex+1):
+for fileIndex in range(0,49+1):
     fileID = str(dashCamFileProcess.list50[fileIndex][1])
     print(fileID, fileIndex)
     """
@@ -60,6 +60,7 @@ for fileIndex in range(sleIndex,sleIndex+1):
     anchor_matrix_whole = sv3DRegion.anchorMatrix
 
     if createSV:
+        sv3DRegion.create_region()
         index = 0
         for sv3D_id, sv3D in sorted(sv3DRegion.sv3D_Dict.items()):
             sv3D.apply_global_adjustment()  # Absolute position on earth
@@ -80,31 +81,18 @@ for fileIndex in range(sleIndex,sleIndex+1):
             programSV3DRegion.apply_anchor_flip()
 
     """
-    Transform the trajectory to GPS location
-    """
-    trajectory = programTrajectory.data['a_position']
-    trajectory = base_process.sv3d_apply_m4(data=trajectory, m4=sv3DRegion.anchorMatrix)
-    trajectory[:, 0] += sv3DRegion.anchorECEF[1]
-    trajectory[:, 1] += sv3DRegion.anchorECEF[2]
-    trajectory[:, 2] += sv3DRegion.anchorECEF[0]
-    """
     Output
     """
-    trajectory_gps = sfm3DRegion.trajectoryJSON
+    trajectory = programTrajectory.data['a_position']
+    trajectory_xyz = sfm3DRegion.trajectoryJSON
     cur = 0
-    for key, value in sorted(trajectory_gps.items()):
-        t = trajectory[cur]
-        lat, lon, h = base_process.ecef_2_geo(t[2], t[0], t[1])
-        trajectory_gps[key] = [lat, lon, h]
+    for key, value in sorted(trajectory_xyz.items()):
+        trajectory_xyz[key] = [float(trajectory[cur][0]), float(trajectory[cur][1]), float(trajectory[cur][2])]
         cur += 1
 
-    #for idx, t in enumerate(trajectory):
-    #    lat, lon, h = base_process.ecef_2_geo(t[2], t[0], t[1])
-    #    trajectory_gps.append([lat, lon, h])
-    #    print(lat, lon, h)
-
-    with open('/home/andy/src/DashCam/json/trajectory_gps/' + fileID + '_trajectory_gps.json', 'w') as outfile:
-        file_meta = {'trajectory_gps': trajectory_gps}
+    print(trajectory_xyz)
+    with open('/home/andy/src/DashCam/json/trajectory_xyz/' + fileID + '_trajectory_xyz.json', 'w') as outfile:
+        file_meta = {'trajectory_xyz': trajectory_xyz}
         json.dump(file_meta, outfile)
 
 """
