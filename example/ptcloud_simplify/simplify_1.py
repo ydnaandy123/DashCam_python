@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 # ==============================================================
-# How to simplify?
-# Let's start from single one
+# Now let's add the ProjectionPanoYawDeg(same mean with heading I guess) back
+# heading (default 0) defines the rotation angle around the camera locus in degrees relative from true north.
+# Headings are measured clockwise (90 degrees is true east).
 # ==============================================================
 import numpy as np
 import sys
@@ -17,7 +18,7 @@ createSV = True
 needAlign = True
 needMatchInfo3d = True
 needVisual = True
-needGround = True
+needGround = False
 mapType = '_trajectory'
 
 # Create dashCamFileProcess and load 50 top Dashcam
@@ -43,10 +44,10 @@ for fileIndex in range(sleIndex, sleIndex+1):
     # because the map didn't query the anchor file
     if sv3DRegion.QQ:
         continue
-    anchor_matrix_whole = sv3DRegion.anchorMatrix
 
     if createSV:
         index = 0
+        sv3DRegion.create_topoloy()
         #sv3DRegion.create_single()
         sv3DRegion.create_region()
         for sv3D_id, sv3D in sorted(sv3DRegion.sv3D_Dict.items()):
@@ -62,13 +63,19 @@ for fileIndex in range(sleIndex, sleIndex+1):
 
             index += 1
 
-        programSV3DRegion = glumpy_setting.ProgramSV3DRegion(data=data, name='ProgramSV3DRegion',
-                                                             point_size=1, anchor_matrix=anchor_matrix_whole)
-        programSV3DRegionGnd = glumpy_setting.ProgramSV3DRegion(data=dataGnd, name='ProgramSV3DRegion',
-                                                             point_size=1, anchor_matrix=anchor_matrix_whole)
+        programSV3DRegion = glumpy_setting.ProgramSV3DRegion(
+            data=data, name='ProgramSV3DRegion',
+            anchor_matrix=sv3DRegion.anchorMatrix, anchor_yaw=sv3DRegion.anchorYaw)
+        programSV3DRegionGnd = glumpy_setting.ProgramSV3DRegion(
+            data=dataGnd, name='ProgramSV3DRegion',
+            anchor_matrix=sv3DRegion.anchorMatrix, anchor_yaw=sv3DRegion.anchorYaw)
+        programSV3DTopology = glumpy_setting.ProgramSV3DTopology(
+            data=sv3DRegion.topologyData, name='ProgramSV3DRegion',
+            anchor_matrix=sv3DRegion.anchorMatrix, anchor_yaw=sv3DRegion.anchorYaw)
         if needMatchInfo3d:
             programSV3DRegion.apply_anchor_flip()
             programSV3DRegionGnd.apply_anchor_flip()
+            programSV3DTopology.apply_anchor_flip()
 
 
 """
@@ -79,6 +86,7 @@ if needVisual:
 
     if createSV:
         gpyWindow.add_program(programSV3DRegion)
+        gpyWindow.add_program(programSV3DTopology)
         if needGround:
             gpyWindow.add_program(programSV3DRegionGnd)
 

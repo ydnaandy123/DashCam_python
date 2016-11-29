@@ -30,8 +30,8 @@ class StreetView3DRegion:
         self.sphericalRay = create_spherical_ray(256, 512)
 
         self.anchorId, self.anchorLat, self.anchorLon = None, 0, 0
-        self.anchorECEF, self.anchorMatrix = np.zeros(3), np.eye(4, dtype=np.float32)
-        self.sv3D_Dict = {}
+        self.anchorECEF, self.anchorMatrix, self.anchorYaw = np.zeros(3), np.eye(4, dtype=np.float32), 0
+        self.sv3D_Dict, self.topologyData = {}, None
 
         self.QQ = False
 
@@ -68,12 +68,12 @@ class StreetView3DRegion:
                 sv3d.local_adjustment(self.anchorECEF)
                 self.sv3D_Dict[self.anchorId] = sv3d
                 self.anchorMatrix = np.dot(sv3d.matrix_local, sv3d.matrix_global)
+                self.anchorYaw = sv3d.yaw
                 data_file.close()
 
         except:
             print('no anchor file QQ')
             self.QQ = True
-
 
     def create_region(self):
         for panoId in self.fileMeta['id2GPS']:
@@ -90,6 +90,34 @@ class StreetView3DRegion:
                 self.sv3D_Dict[panoId] = sv3d
                 data_file.close()
 
+    def create_single(self):
+        for panoId in self.fileMeta['id2GPS']:
+            if panoId == self.anchorId:
+                continue
+            pano_id_dir = os.path.join(self.dataDir, panoId)
+            panorama = scipy.misc.imread(pano_id_dir + '.jpg').astype(np.float)
+            with open(pano_id_dir + '.json') as data_file:
+                pano_meta = json.load(data_file)
+                sv3d = StreetView3D(pano_meta, panorama)
+                sv3d.create_ptcloud(self.sphericalRay)
+                sv3d.global_adjustment()
+                sv3d.local_adjustment(self.anchorECEF)
+                self.sv3D_Dict[panoId] = sv3d
+                data_file.close()
+            break
+
+    def create_topoloy(self):
+        id_2_gps = self.fileMeta['id2GPS']
+        pano_num = len(id_2_gps)
+        data = np.zeros(pano_num, dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+        idx = 0
+        for panoid in id_2_gps:
+            gps = id_2_gps[panoid]
+            ecef = base_process.geo_2_ecef(float(gps[0]), float(gps[1]), 22) - self.anchorECEF
+            data['a_position'][idx] = np.asarray([ecef[1], ecef[2], ecef[0]], dtype=np.float32)
+            idx += 1
+        data['a_color'] = [0, 1, 0]
+        self.topologyData = data
 
 class StreetView3D:
     def __init__(self, pano_meta, panorama):

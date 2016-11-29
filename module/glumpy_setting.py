@@ -5,6 +5,7 @@ from glumpy.ext import png
 #
 import base_process
 
+
 class ProgramAxis():
     def __init__(self, data=None, name='ProgramAxis', line_length=1, arrow_size=2, geometry_size=1):
         program = gloo.Program(vertexSimple, fragmentSimple)
@@ -115,11 +116,14 @@ class ProgramPlane:
 
 class ProgramSV3DRegion:
     def __init__(self, data=None, name='ProgramSV3DRegion',
-                 point_size=1, anchor_matrix=np.eye(4, dtype=np.float32), alpha=1.0, is_inverse=False):
+                 point_size=1, anchor_matrix=np.eye(4, dtype=np.float32), anchor_yaw=0,
+                 alpha=1.0, is_inverse=False, is_yaw=False):
         self.data = data.view(gloo.VertexBuffer)
         self.anchor_matrix = anchor_matrix
         self.anchor_matrix_inv = np.linalg.inv(self.anchor_matrix)
+        self.anchor_yaw = anchor_yaw
         self.isInverse = is_inverse
+        self.isYaw = is_yaw
 
         program = gloo.Program(vertexPoint, fragmentAlpha)
         program.bind(self.data)
@@ -143,8 +147,21 @@ class ProgramSV3DRegion:
             self.data['a_position'] = \
                 self.data['a_position'] = base_process.sv3d_apply_m4(
                 data=self.data['a_position'], m4=self.anchor_matrix_inv)
-
         self.isInverse = not self.isInverse
+
+    def apply_yaw_flip(self):
+        if self.isInverse:
+            matrix = np.eye(4, dtype=np.float32)
+            if self.isYaw:
+                glm.rotate(matrix, self.anchor_yaw, 0, 0, 1)
+                self.data['a_position'] = base_process.sv3d_apply_m4(
+                    data=self.data['a_position'],m4=matrix)
+            else:
+                glm.rotate(matrix, self.anchor_yaw, 0, 0, -1)
+                self.data['a_position'] = \
+                    self.data['a_position'] = base_process.sv3d_apply_m4(
+                    data=self.data['a_position'], m4=matrix)
+            self.isYaw = not self.isYaw
 
     def apply_anchor_plus_rotate(self):
         matrix = self.anchor_matrix
@@ -185,7 +202,8 @@ class ProgramSFM3DRegion:
 
         self.isAligned = not self.isAligned
 
-class programTrajectory:
+
+class ProgramTrajectory:
     def __init__(self, data=None, name='programTrajectory',
                  point_size=5, matrix=np.eye(4, dtype=np.float32), is_aligned=False):
         self.data = data.view(gloo.VertexBuffer)
@@ -221,6 +239,64 @@ class programTrajectory:
     def apply_m4(self, m4):
         self.data['a_position'] = \
             base_process.sv3d_apply_m4(data=self.data['a_position'], m4=m4)
+
+
+class ProgramSV3DTopology:
+    def __init__(self, data=None, name='ProgramSV3DRegion',
+                 point_size=10, anchor_matrix=np.eye(4, dtype=np.float32), anchor_yaw=0,
+                 alpha=1.0, is_inverse=False, is_yaw=False):
+        self.data = data.view(gloo.VertexBuffer)
+        self.anchor_matrix = anchor_matrix
+        self.anchor_matrix_inv = np.linalg.inv(self.anchor_matrix)
+        self.anchor_yaw = anchor_yaw
+        self.isInverse = is_inverse
+        self.isYaw = is_yaw
+
+        program = gloo.Program(vertexPoint, fragmentAlpha)
+        program.bind(self.data)
+
+        program['alpha'] = alpha
+        program['a_pointSize'] = point_size
+        program['u_model'] = np.eye(4, dtype=np.float32)
+        program['u_view'] = np.eye(4, dtype=np.float32)
+
+        self.name = name
+        self.program = program
+        self.draw_mode = gl.GL_POINTS
+        self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
+            4, dtype=np.float32)
+
+        O = np.array([0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7], dtype=np.uint32)
+        self.O = O.view(gloo.IndexBuffer)
+
+    def apply_anchor_flip(self):
+        if self.isInverse:
+            self.data['a_position'] = base_process.sv3d_apply_m4(
+                data=self.data['a_position'],m4=self.anchor_matrix)
+        else:
+            self.data['a_position'] = \
+                self.data['a_position'] = base_process.sv3d_apply_m4(
+                data=self.data['a_position'], m4=self.anchor_matrix_inv)
+        self.isInverse = not self.isInverse
+
+    def apply_yaw_flip(self):
+        if self.isInverse:
+            matrix = np.eye(4, dtype=np.float32)
+            if self.isYaw:
+                glm.rotate(matrix, self.anchor_yaw, 0, 0, 1)
+                self.data['a_position'] = base_process.sv3d_apply_m4(
+                    data=self.data['a_position'],m4=matrix)
+            else:
+                glm.rotate(matrix, self.anchor_yaw, 0, 0, -1)
+                self.data['a_position'] = \
+                    self.data['a_position'] = base_process.sv3d_apply_m4(
+                    data=self.data['a_position'], m4=matrix)
+            self.isYaw = not self.isYaw
+
+    def apply_anchor_plus_rotate(self):
+        matrix = self.anchor_matrix
+        glm.rotate(matrix, 180, 0, 1, 0)
+        self.data['a_position'] = base_process.sv3d_apply_m4(data=self.data['a_position'], m4=np.linalg.inv(matrix))
 
 
 class GpyWindow:
@@ -277,6 +353,12 @@ class GpyWindow:
                 program['u_projection'] = self.u_projection
                 if program_object.draw_mode == gl.GL_TRIANGLES:
                     program.draw(program_object.draw_mode, program_object.face)
+                elif program_object.draw_mode == gl.GL_LINES and program_object.name == 'ProgramSFM3DRegion':
+                    gl.glDisable(gl.GL_POLYGON_OFFSET_FILL)
+                    gl.glEnable(gl.GL_BLEND)
+                    gl.glDepthMask(gl.GL_FALSE)
+                    program.draw(program_object.draw_mode, program_object.O)
+                    gl.glDepthMask(gl.GL_TRUE)
                 else:
                     program.draw(program_object.draw_mode)
 
@@ -354,6 +436,10 @@ class GpyWindow:
                 for program_object in self.programs:
                     if program_object.name == 'ProgramSV3DRegion':
                         program_object.apply_anchor_flip()
+            elif symbol == 89:  # y --> rotate google according anchor yaw
+                for program_object in self.programs:
+                    if program_object.name == 'ProgramSV3DRegion':
+                        program_object.apply_yaw_flip()
 
         def matrix_model(model):
             glm.scale(model, self.size, self.size, self.size)
