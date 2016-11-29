@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # ==============================================================
-# Step.5
+# Step.6
 # Output the ply file of SV3D constructed from trajectory
 # ==============================================================
 import numpy as np
