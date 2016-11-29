@@ -45,7 +45,7 @@ for fileIndex in range(sleIndex,sleIndex+1):
     Create the trajectory
     """
     if createTrajectory:
-        programTrajectory = glumpy_setting.programTrajectory(data=sfm3DRegion.trajectoryData, name='programTrajectory',
+        programTrajectory = glumpy_setting.ProgramTrajectory(data=sfm3DRegion.trajectoryData, name='programTrajectory',
                                                              point_size=6, matrix=sfm3DRegion.matrix)
         if needAlign:
             programTrajectory.align_flip()

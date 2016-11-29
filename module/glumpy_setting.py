@@ -319,6 +319,7 @@ class GpyWindow:
         self.u_view = u_view
 
         self.demo_dt = 0
+        self.scIdx = 0
         @window.event
         def on_draw(dt):
             window.clear()
@@ -440,6 +441,11 @@ class GpyWindow:
                 for program_object in self.programs:
                     if program_object.name == 'ProgramSV3DRegion':
                         program_object.apply_yaw_flip()
+            elif symbol == 80:  # p --> print scrren
+                gl.glReadPixels(0, 0, window.width, window.height,
+                                gl.GL_RGB, gl.GL_UNSIGNED_BYTE, framebuffer)
+                png.from_array(framebuffer, 'RGB').save('screenshot{}.png'.format(self.scIdx))
+                self.scIdx += 1
 
         def matrix_model(model):
             glm.scale(model, self.size, self.size, self.size)
