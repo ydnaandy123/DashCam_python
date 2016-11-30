@@ -4,7 +4,6 @@ A project about dashcam implemented by Python
 - [intro video](https://www.youtube.com/watch?v=qeIMMk8E17o)
 
 ## Current pipeline
--  example/new_system_pipeline
 1. Fetch the Google data (Use info_3d)
 2. Transform the point in SFM to Google (SV3D)
 3. Align the SFM with Google (By sfm3DRegion.matrix)
@@ -13,14 +12,18 @@ A project about dashcam implemented by Python
 6. Create the SV3D according to trajectory(Now, it's important to use the correct anchor!!)
 7. Output the ply file of SV3D constructed from trajectory
 
+## Code
+-  example/new_system_pipeline
 - ![pipeline](src/pipeline.gif)
 - TODO:
   - Fetch the Google data (files lacked anchor's data)
 
 ## Model Simplify
-- Index Map split
-- ![indexPNG](src/index_map.png)![indexGIF](src/index_map.gif)
-- ![splitPNG](src/split_map.png)![splitGIF](src/split_map.gif)
+- Index map split
+- ![indexPNG](src/index_map.png)
+- ![indexGIF](src/index_map.gif)
+- ![splitPNG](src/split_map.png)
+- ![splitGIF](src/split_map.gif)
 - TODO:
   - structure the point cloud data
   - down sample single pano
