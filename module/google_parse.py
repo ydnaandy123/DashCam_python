@@ -8,6 +8,7 @@ import base64
 import struct
 import os
 import json
+import skimage.measure
 from glumpy import glm
 
 #
@@ -63,10 +64,11 @@ class StreetView3DRegion:
             with open(pano_id_dir + '.json') as data_file:
                 pano_meta = json.load(data_file)
                 sv3d = StreetView3D(pano_meta, panorama)
-                sv3d.create_ptcloud(self.sphericalRay)
+                #sv3d.create_ptcloud(self.sphericalRay)
                 sv3d.global_adjustment()
                 sv3d.local_adjustment(self.anchorECEF)
-                self.sv3D_Dict[self.anchorId] = sv3d
+                # TODO: reduce some redundant work
+                #self.sv3D_Dict[self.anchorId] = sv3d
                 self.anchorMatrix = np.dot(sv3d.matrix_local, sv3d.matrix_global)
                 self.anchorYaw = sv3d.yaw
                 data_file.close()
@@ -76,9 +78,7 @@ class StreetView3DRegion:
             self.QQ = True
 
     def create_region(self):
-        for panoId in self.fileMeta['id2GPS']:
-            if panoId == self.anchorId:
-                continue
+        for panoId in sorted(self.fileMeta['id2GPS']):
             pano_id_dir = os.path.join(self.dataDir, panoId)
             panorama = scipy.misc.imread(pano_id_dir + '.jpg').astype(np.float)
             with open(pano_id_dir + '.json') as data_file:
@@ -91,9 +91,7 @@ class StreetView3DRegion:
                 data_file.close()
 
     def create_single(self):
-        for panoId in self.fileMeta['id2GPS']:
-            if panoId == self.anchorId:
-                continue
+        for panoId in sorted(self.fileMeta['id2GPS']):
             pano_id_dir = os.path.join(self.dataDir, panoId)
             panorama = scipy.misc.imread(pano_id_dir + '.jpg').astype(np.float)
             with open(pano_id_dir + '.json') as data_file:
@@ -191,6 +189,10 @@ class StreetView3D:
         depth_map = np.zeros((height * width), dtype=np.float32)
         depth_map[np.nonzero(plane_indices == 0)] = np.nan
         depth_map_gnd = np.copy(depth_map)
+        #self.showIndex()
+        #self.showNormal()
+        self.split_plane()
+
         v = v.reshape((height * width, 3))
 
         # index == 0 refers to the sky
@@ -211,6 +213,9 @@ class StreetView3D:
 
             depth_map[np.nonzero(plane_indices == i)] = depth[np.nonzero(plane_indices == i)]
             depth_map_gnd[np.nonzero(plane_indices == i)] = depth_gnd[np.nonzero(plane_indices == i)]
+            normal_x_map[np.nonzero(plane_indices == i)] = vec[0]
+            normal_y_map[np.nonzero(plane_indices == i)] = vec[1]
+            normal_z_map[np.nonzero(plane_indices == i)] = vec[2]
 
         panorama = scipy.misc.imresize(self.panorama, (height, width), interp='bilinear', mode=None)
         xyz = (np.transpose(v) * np.matlib.repmat(depth_map, 3, 1))
@@ -248,6 +253,44 @@ class StreetView3D:
         self.ptCLoudDataGnd = data_gnd
         self.fix_spherical_inside_out()
 
+
+    def split_plane(self):
+        height, width = self.depthHeader['panoHeight'], self.depthHeader['panoWidth']
+        indices = np.array(self.depthMapIndices).reshape(height, width)
+        indices_split = np.zeros((height, width), dtype=np.float32)
+        cur_idx = 0
+        for i in range(0, self.depthHeader['numPlanes']):
+            index_map = np.zeros((height, width), dtype=np.float32)
+            index_map[np.nonzero(indices == i)] = 1
+            #cv2.imshow('image', index_map)
+            #cv2.waitKey(0)
+            all_labels = skimage.measure.label(index_map, background=0)
+            for l in range(1, all_labels.max()+1):
+                label_map = np.zeros((height, width), dtype=np.float32)
+                label_map[np.nonzero(all_labels == l)] = 1
+                indices_split[np.nonzero(all_labels == l)] = cur_idx
+                #cv2.imshow('image', indices_split/cur_idx)
+                #cv2.waitKey(0)
+
+                cur_idx += 1
+
+
+        #cv2.imshow('image', indices_split/88)
+        #cv2.waitKey(0)
+        # TODO plane split
+        indices_split = indices_split.reshape((height * width, 1))
+        index_map_all = np.zeros((height * width, 3), dtype=np.uint8)
+        color_map = np.random.random_integers(0, 255, (cur_idx, 3))
+        for i in range(0, cur_idx):
+            index_map = np.zeros((height * width, 3), dtype=np.uint8)
+            index_map[np.nonzero(indices_split == i), :] = color_map[i, :]
+            index_map_all[np.nonzero(indices_split == i), :] = color_map[i, :]
+            cv2.imwrite('split{:02d}.png'.format(int(str(i))), index_map_all.reshape((height, width, 3)))
+
+        cv2.imwrite('split.png', index_map_all.reshape((height, width, 3)))
+        cv2.imshow('image', index_map_all.reshape((height, width, 3)).astype(np.uint8))
+        cv2.waitKey(0)
+        print('why')
 
     def create_ptcloud_ground_grid(self):
         data = base_process.create_plane(n_point=80, sx=5, sy=8, ground_z=-2)
@@ -339,21 +382,34 @@ class StreetView3D:
 
 
     def showIndex(self):
-        height = self.DepthHeader['panoHeight']
-        width = self.DepthHeader['panoWidth']
-        indices = np.array((self.DepthMapIndices))
-        indexMap = np.zeros((height * width, 3), dtype=np.uint8)
-        colorMap = np.random.random_integers(0, 255, (self.DepthHeader['numPlanes'], 3))
-        for i in range(0, self.DepthHeader['numPlanes']):
-            indexMap = np.zeros((height * width, 3), dtype=np.uint8)
-            indexMap[np.nonzero(indices == i), :] = colorMap[i, :]
-            cv2.imwrite('index' + str(i) + '.png', indexMap.reshape((height, width, 3)))
+        height = self.depthHeader['panoHeight']
+        width = self.depthHeader['panoWidth']
+        indices = np.array(self.depthMapIndices)
+        index_map_all = np.zeros((height * width, 3), dtype=np.uint8)
+        color_map = np.random.random_integers(0, 255, (self.depthHeader['numPlanes'], 3))
+        for i in range(0, self.depthHeader['numPlanes']):
+            index_map = np.zeros((height * width, 3), dtype=np.uint8)
+            index_map[np.nonzero(indices == i), :] = color_map[i, :]
+            index_map_all[np.nonzero(indices == i), :] = color_map[i, :]
+            cv2.imwrite('index{}.png'.format(str(i)), index_map.reshape((height, width, 3)))
 
-        # indexMap *=  255 / 50
-        # indexMap[np.nonzero(indexMap > 255)] = 255
-        cv2.imshow('image', indexMap.reshape((height, width, 3)).astype(np.uint8))
+        cv2.imwrite('index_map.png', index_map_all.reshape((height, width, 3)))
+        cv2.imshow('image', index_map_all.reshape((height, width, 3)).astype(np.uint8))
         cv2.waitKey(0)
 
+    def showNormal(self):
+        height = self.depthHeader['panoHeight']
+        width = self.depthHeader['panoWidth']
+        indices = np.array(self.depthMapIndices)
+        normal_map = np.zeros((height * width, 3), dtype=np.float32)
+        for i in range(0, self.depthHeader['numPlanes']):
+            plane = self.depthMapPlanes[i]
+            vec = (np.array((plane['nx'], plane['ny'], plane['nz']), dtype=np.float32) + 1) / 2
+            normal_map[np.nonzero(indices == i), :] = vec
+            #cv2.imwrite('index{}.png'.format(str(i)), normal_map.reshape((height, width, 3)))
+
+        cv2.imshow('image', normal_map.reshape((height, width, 3)))
+        cv2.waitKey(0)
 
 def create_spherical_ray(height, width):
     h = np.arange(height)
