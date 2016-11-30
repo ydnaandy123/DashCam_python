@@ -15,3 +15,9 @@ A project about dashcam implemented by Python
 - ![pipeline](pipeline.gif)
 - TODO:
   - Fetch the Google data (files lacked anchor's data)
+
+## Model Simplify
+- TODO:
+  - down sample single pano
+  - adjust different pano relative position
+  -

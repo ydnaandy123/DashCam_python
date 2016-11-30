@@ -15,7 +15,6 @@ import glumpy_setting
 
 sleIndex = 3
 createSV = True
-needAlign = True
 needMatchInfo3d = True
 needVisual = True
 needGround = False
@@ -48,8 +47,8 @@ for fileIndex in range(sleIndex, sleIndex+1):
     if createSV:
         index = 0
         sv3DRegion.create_topoloy()
-        #sv3DRegion.create_single()
-        sv3DRegion.create_region()
+        sv3DRegion.create_single()
+        #sv3DRegion.create_region()
         for sv3D_id, sv3D in sorted(sv3DRegion.sv3D_Dict.items()):
             sv3D.apply_global_adjustment()  # Absolute position on earth
             sv3D.apply_local_adjustment()  # Relative position according to anchor
