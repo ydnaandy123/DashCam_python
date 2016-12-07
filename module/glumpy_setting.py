@@ -101,7 +101,7 @@ class ProgramPlane:
 
         #program['color'] = (1, 0, 0, 1)
         #program['color_sel'] = 1
-        program['alpha'] = 0.0
+        program['alpha'] = 1.0
         program['u_model'] = np.eye(4, dtype=np.float32)
         program['u_view'] = glm.translation(0, 0, -50)
 

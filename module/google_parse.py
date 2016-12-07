@@ -10,7 +10,7 @@ import os
 import json
 import skimage.measure
 from glumpy import glm
-
+from sklearn.decomposition import PCA
 #
 import base_process
 
@@ -123,6 +123,7 @@ class StreetView3D:
         self.panorama = panorama
         self.depthHeader, self.depthMapIndices, self.depthMapPlanes = {}, [], []
         self.depthMap, self.ptCLoudData, self.ptCLoudDataGnd, self.ptCLoudDataGndGrid = None, None, None, None
+        self.normal_map, self.gnd_indices = None, None
         self.lat, self.lon, self.yaw = float(pano_meta['Lat']), float(pano_meta['Lon']), float(pano_meta['ProjectionPanoYawDeg'])
         self.ecef = base_process.geo_2_ecef(self.lat, self.lon, 22)
 
@@ -187,82 +188,73 @@ class StreetView3D:
 
     def create_ptcloud(self, v):
         height, width = self.depthHeader['panoHeight'], self.depthHeader['panoWidth']
-        #plane_indices = np.array(self.depthMapIndices)
-        #depth_map = np.zeros((height * width), dtype=np.float32)
-        #depth_map[np.nonzero(plane_indices == 0)] = np.nan
-        #depth_map_gnd = np.copy(depth_map)
-        #self.showIndex()
-        #self.showNormal()
-        self.split_plane()
-        plane_indices = self.indices_split
+        plane_indices = np.array(self.depthMapIndices)
         depth_map = np.zeros((height * width), dtype=np.float32)
-        depth_map[np.nonzero(plane_indices == 0)] = np.nan
-        depth_map_gnd = np.copy(depth_map)
-
+        gnd_indices = np.zeros((height * width), dtype=np.bool)
+        normal_map = np.zeros((height * width, 3), dtype=np.float32)
         v = v.reshape((height * width, 3))
 
         # index == 0 refers to the sky
+        depth_map[np.nonzero(plane_indices == 0)] = np.nan
+        # Create depth per plane
         for i in range(1, self.depthHeader['numPlanes']):
-            plane = self.plane_split[i]
+            plane = self.depthMapPlanes[i]
             p_depth = np.ones((height * width)) * plane['d']
 
             vec = (plane['nx'], plane['ny'], plane['nz'])
+            normal_map[np.nonzero(plane_indices == i), :] = vec
             angle_diff = base_process.angle_between(vec, (0, 0, -1))
             if angle_diff < 0.3:
-                depth = np.ones((height * width)) * np.nan
-                depth_gnd = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
-            else:
-                depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
-                depth_gnd = np.ones((height * width)) * np.nan
+                gnd_indices[np.nonzero(plane_indices == i)] = True
 
-            #depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
-
+            depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
             depth_map[np.nonzero(plane_indices == i)] = depth[np.nonzero(plane_indices == i)]
-            depth_map_gnd[np.nonzero(plane_indices == i)] = depth_gnd[np.nonzero(plane_indices == i)]
+
 
         panorama = scipy.misc.imresize(self.panorama, (height, width), interp='bilinear', mode=None)
         xyz = (np.transpose(v) * np.matlib.repmat(depth_map, 3, 1))
         #TODO KD-tree
-        data = np.zeros((height, width), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
-        data['a_position'] = np.transpose(xyz).reshape((height, width, 3))
-        data['a_color'] = np.array(panorama) / 255
+        data = np.zeros((height*width), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+        data['a_position'] = np.transpose(xyz)
+        data['a_color'] = np.reshape(np.array(panorama) / 255, (height*width, 3))
 
-        con = ~np.isnan(data['a_position'][:, :, 0])
-        con &= ~np.isnan(data['a_position'][:, :, 1])
-        con &= ~np.isnan(data['a_position'][:, :, 2])
-        data = data[np.nonzero(con)]
-        #data = data.flatten()
-        """
-        GROUND PLANE!
-        """
-        xyz = (np.transpose(v) * np.matlib.repmat(depth_map_gnd, 3, 1))
-        data_gnd = np.zeros((height, width), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
-        data_gnd['a_position'] = np.transpose(xyz).reshape((height, width, 3))
-        data_gnd['a_color'] = np.array(panorama) / 255
+        self.split_plane()
+        con = ~np.isnan(data['a_position'][:, 0])
+        con &= ~np.isnan(data['a_position'][:, 1])
+        con &= ~np.isnan(data['a_position'][:, 2])
+        non_con = con & ~gnd_indices
+        gnd_con = con & gnd_indices
 
-        yo = np.transpose(xyz)
-        sel = yo[np.nonzero(self.indices_split == 2)]
-        sel_normal = self.plane_split[2]
-        from sklearn.decomposition import PCA
+        data_non_gnd = data[np.nonzero(non_con)]
+        data_gnd = data[np.nonzero(gnd_con)]
+
+        indices_split_gnd = self.indices_split[np.nonzero(gnd_con)]
+        sel = data_gnd['a_position'][np.nonzero(indices_split_gnd == 2)]
+        #sel_normal = self.plane_split[2]
+        #from sklearn.decomposition import PCA
         pca = PCA(n_components=2)
         newData = pca.fit_transform(sel)
+        bbox = base_process.bounding_box(newData)
+        newData2 = np.dot(newData, pca.components_)
+        newData3 = newData2 + pca.mean_
 
-        con = ~np.isnan(data_gnd['a_position'][:, :, 0])
-        con &= ~np.isnan(data_gnd['a_position'][:, :, 1])
-        con &= ~np.isnan(data_gnd['a_position'][:, :, 2])
-
-        #con &= (data_gnd['a_position'][:, :, 0] < 10)
-        #con &= (data_gnd['a_position'][:, :, 0] > -10)
-        #con &= (data_gnd['a_position'][:, :, 1] < 10)
-        #con &= (data_gnd['a_position'][:, :, 1] > -10)
-        # con &= (data_gnd['a_position'][:, :, 2] < 10)
-        # con &= (data_gnd['a_position'][:, :, 2] > -10)
-        data_gnd = data_gnd[np.nonzero(con)]
-
+        # Store
         self.depthMap = depth_map.reshape((height, width))
-        self.ptCLoudData = data
+        self.gnd_indices = gnd_indices.reshape((height, width))
+        self.normal_map = normal_map.reshape(height, width, 3)
+        self.ptCLoudData = data_non_gnd
         self.ptCLoudDataGnd = data_gnd
         self.fix_spherical_inside_out()
+
+        #self.visualize()
+
+    def visualize(self):
+        self.show_pano()
+        self.show_index()
+        self.show_normal()
+        self.show_depth()
+        self.show_index_split()
+        self.show_gnd()
 
     def split_plane(self):
         height, width = self.depthHeader['panoHeight'], self.depthHeader['panoWidth']
@@ -343,23 +335,6 @@ class StreetView3D:
                                                                     m4=m4)
         self.ptCLoudDataGnd['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudDataGnd['a_position'], m4=m4)
 
-    def show_depth(self):
-        # The further, the brighter
-        # Inverse to inside-out
-        depth_map = self.depthMap * 255 / 50
-        depth_map[np.nonzero(np.isnan(depth_map))] = 255
-        depth_map[np.nonzero(depth_map > 255)] = 255
-        depth_map /= 255
-        #scipy.misc.imshow(depth_map)
-        #scipy.misc.imshow(self.panorama)
-        scipy.misc.imsave('depth.png', depth_map)
-
-    def show_pano(self):
-        panorama = self.panorama
-        #panorama[100-10:100+10, 100-10:100+10, :] = [255, 0, 0]
-
-        scipy.misc.imshow(panorama)
-
     def global_adjustment(self):
         matrix = np.eye(4, dtype=np.float32)
         #glm.rotate(matrix, 180, 0, 1, 0)
@@ -393,9 +368,12 @@ class StreetView3D:
 
 #        self.ptCLoudDataGndGrid['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudDataGndGrid['a_position'],
 #                                                                       m4=self.matrix_local)
+    def show_pano(self):
+        panorama = self.panorama
+        #panorama[100-10:100+10, 100-10:100+10, :] = [255, 0, 0]
+        scipy.misc.imshow(panorama)
 
-
-    def showIndex(self):
+    def show_index(self):
         height = self.depthHeader['panoHeight']
         width = self.depthHeader['panoWidth']
         indices = np.array(self.depthMapIndices)
@@ -405,25 +383,44 @@ class StreetView3D:
             index_map = np.zeros((height * width, 3), dtype=np.uint8)
             index_map[np.nonzero(indices == i), :] = color_map[i, :]
             index_map_all[np.nonzero(indices == i), :] = color_map[i, :]
-            cv2.imwrite('index{}.png'.format(str(i)), index_map.reshape((height, width, 3)))
+            #cv2.imwrite('index{}.png'.format(str(i)), index_map.reshape((height, width, 3)))
 
-        cv2.imwrite('index_map.png', index_map_all.reshape((height, width, 3)))
+        #cv2.imwrite('index_map.png', index_map_all.reshape((height, width, 3)))
         cv2.imshow('image', index_map_all.reshape((height, width, 3)).astype(np.uint8))
         cv2.waitKey(0)
 
-    def showNormal(self):
+    def show_normal(self):
+        scipy.misc.imshow(self.normal_map)
+
+    def show_depth(self):
+        # The further, the brighter
+        # Inverse to inside-out
+        depth_map = self.depthMap * 255 / 50
+        depth_map[np.nonzero(np.isnan(depth_map))] = 255
+        depth_map[np.nonzero(depth_map > 255)] = 255
+        depth_map /= 255
+        scipy.misc.imshow(depth_map)
+        scipy.misc.imsave('depth.png', depth_map)
+
+    def show_index_split(self):
         height = self.depthHeader['panoHeight']
         width = self.depthHeader['panoWidth']
-        indices = np.array(self.depthMapIndices)
-        normal_map = np.zeros((height * width, 3), dtype=np.float32)
-        for i in range(0, self.depthHeader['numPlanes']):
-            plane = self.depthMapPlanes[i]
-            vec = (np.array((plane['nx'], plane['ny'], plane['nz']), dtype=np.float32) + 1) / 2
-            normal_map[np.nonzero(indices == i), :] = vec
-            #cv2.imwrite('index{}.png'.format(str(i)), normal_map.reshape((height, width, 3)))
+        indices = np.array(self.indices_split)
+        length = len(self.plane_split)
+        index_map_all = np.zeros((height * width, 3), dtype=np.uint8)
+        color_map = np.random.random_integers(0, 255, (length, 3))
+        for i in range(0, length):
+            index_map = np.zeros((height * width, 3), dtype=np.uint8)
+            index_map[np.nonzero(indices == i), :] = color_map[i, :]
+            index_map_all[np.nonzero(indices == i), :] = color_map[i, :]
+            #cv2.imwrite('index{}.png'.format(str(i)), index_map.reshape((height, width, 3)))
 
-        cv2.imshow('image', normal_map.reshape((height, width, 3)))
+        #cv2.imwrite('index_map.png', index_map_all.reshape((height, width, 3)))
+        cv2.imshow('image', index_map_all.reshape((height, width, 3)).astype(np.uint8))
         cv2.waitKey(0)
+
+    def show_gnd(self):
+        scipy.misc.imshow(self.gnd_indices)
 
 def create_spherical_ray(height, width):
     h = np.arange(height)

@@ -120,3 +120,12 @@ def vec_2_panorama(vec):
     return lat, lng
 
 
+def bounding_box(points):
+    """
+    [xmin ymin]
+    [xmax ymax]
+    """
+    a = np.zeros((2,2))
+    a[0, :] = np.min(points, axis=0)
+    a[1, :] = np.max(points, axis=0)
+    return a

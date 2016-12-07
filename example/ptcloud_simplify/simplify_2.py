@@ -4,6 +4,7 @@
 # Now can we have a more brilliant way to represent the point cloud
 # ==============================================================
 import numpy as np
+import triangle
 import sys
 
 sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')  # use the module under 'module'
@@ -85,6 +86,14 @@ For Visualize
 """
 if needVisual:
     gpyWindow = glumpy_setting.GpyWindow()
+
+    """
+    Triangle
+    """
+    tri = np.array(triangle.delaunay(dataGnd['a_position'][1:1000, 0:2]), dtype=np.uint32)
+    dataGnd['a_position'][:, 2] = 0
+    programGround = glumpy_setting.ProgramPlane(data=dataGnd[1:1000], name=str(fileIndex), face=tri)
+    gpyWindow.add_program(programGround)
 
     if createSV:
         gpyWindow.add_program(programSV3DRegion)
