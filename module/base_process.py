@@ -36,6 +36,19 @@ def gl_2_gps_great_circle(vec):
     return lat, lon
 
 
+def gl_2_ecef_great_circle(vec):
+    x, y, z = vec
+    r = np.linalg.norm((x, y, 0))
+    lat = math.atan(z / r) / np.pi * 180
+    lon = math.atan(x / y) / np.pi * 180
+    if y < 0:
+        if x < 0:
+            lon -= 180
+        else:
+            lon += 180
+    return lat, lon
+
+
 # http://w3.uch.edu.tw/ccchang50/crd_trsnafer.pdf
 # https://en.wikipedia.org/wiki/ECEF
 def geo_2_ecef(lat, lon, height=0):
