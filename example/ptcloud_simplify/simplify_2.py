@@ -80,20 +80,30 @@ for fileIndex in range(sleIndex, sleIndex+1):
             programSV3DRegionGnd.apply_anchor_flip()
             programSV3DTopology.apply_anchor_flip()
 
-
+"""
+Triangle
+"""
+'''
+data = np.zeros((4), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+data['a_position'] = np.array([[-10, -10, -2],
+                               [10, -10, -2],
+                               [10, 10, -2],
+                               [-10, 10, -2]])
+data['a_color'] = np.array([1, 0, 0],
+                           [0, 1, 0],
+                           [0, 0, 1],
+                           [0, 1, 1])
+I = np.array([0, 1, 2, 0, 2, 3], dtype=np.uint32)
+tri = np.array(triangle.delaunay(data['a_position'][:, 0:2]), dtype=np.uint32)
+programGround = glumpy_setting.ProgramPlane(data=data, name='test', face=I)
+'''
 """
 For Visualize
 """
 if needVisual:
     gpyWindow = glumpy_setting.GpyWindow()
 
-    """
-    Triangle
-    """
-    tri = np.array(triangle.delaunay(dataGnd['a_position'][1:1000, 0:2]), dtype=np.uint32)
-    dataGnd['a_position'][:, 2] = 0
-    programGround = glumpy_setting.ProgramPlane(data=dataGnd[1:1000], name=str(fileIndex), face=tri)
-    gpyWindow.add_program(programGround)
+    #gpyWindow.add_program(programGround)
 
     if createSV:
         gpyWindow.add_program(programSV3DRegion)
