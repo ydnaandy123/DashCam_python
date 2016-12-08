@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 # ==============================================================
-# Elegant region style
-# Now can we have a more brilliant way to represent the point cloud
+# Let's create a grid-mesh for manual boxing region
 # ==============================================================
 import numpy as np
 import triangle
@@ -17,7 +16,7 @@ sleIndex = 3
 createSV = True
 needMatchInfo3d = True
 needVisual = True
-needGround = True
+needGround = False
 mapType = '_trajectory'
 
 # Create dashCamFileProcess and load 50 top Dashcam
@@ -81,10 +80,42 @@ for fileIndex in range(sleIndex, sleIndex+1):
             programSV3DTopology.apply_anchor_flip()
 
 """
+Manual boxing
+"""
+xmin, xmax = -10, 10
+ymin, ymax = -20, 20
+
+nx, ny = (11, 11)
+size = nx * ny
+
+x = np.linspace(xmin, xmax, nx)
+y = np.linspace(ymin, ymax, ny)
+xv, yv = np.meshgrid(x, y)
+
+test = np.dstack((xv, yv))
+
+data = np.zeros((4), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+data['a_position'] = np.array([[-10, -10, -2],
+                               [10, -10, -2],
+                               [10, 10, -2],
+                               [-10, 10, -2]])
+
+data['a_color'] = np.array([[1, 0, 0],
+                           [0, 1, 0],
+                           [0, 0, 1],
+                           [1, 1, 0]])
+
+I = np.array([0, 1, 2, 0, 2, 3], dtype=np.uint32)
+tri = np.array(triangle.delaunay(data['a_position'][:, 0:2]), dtype=np.uint32)
+programGround = glumpy_setting.ProgramPlane(data=data, name='test', face=tri)
+
+"""
 For Visualize
 """
 if needVisual:
     gpyWindow = glumpy_setting.GpyWindow()
+
+    gpyWindow.add_program(programGround)
 
     if createSV:
         gpyWindow.add_program(programSV3DRegion)
