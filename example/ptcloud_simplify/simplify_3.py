@@ -5,6 +5,7 @@
 import numpy as np
 import triangle
 import sys
+import scipy.misc
 
 sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')  # use the module under 'module'
 import file_process
@@ -54,6 +55,8 @@ for fileIndex in range(sleIndex, sleIndex+1):
 
             if index == 0:
                  data = sv3D.ptCLoudData
+                 # TODO: pano
+                 pano = sv3D.panorama
                  dataGnd = sv3D.ptCLoudDataGnd
             else:
                  data = np.concatenate((data, sv3D.ptCLoudData), axis=0)
@@ -93,19 +96,23 @@ y = np.linspace(ymin, ymax, ny)
 xv, yv = np.meshgrid(x, y)
 
 test = np.dstack((xv, yv))
+plane = np.zeros((nx, ny, 3), dtype=np.float32)
+plane[:, :, 0:2] = test
+plane[:, :, 2] = -2
+plane = np.reshape(plane, (size, 3))
 
-data = np.zeros((4), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
-data['a_position'] = np.array([[-10, -10, -2],
-                               [10, -10, -2],
-                               [10, 10, -2],
-                               [-10, 10, -2]])
+color = np.zeros((size, 3), dtype=np.float32)
+for y in range(0, ny):
+    for x in range(0, nx):
+        index = x + y*ny
+        pos = plane[index]
+        color[index] = [1, 0, 0]
 
-data['a_color'] = np.array([[1, 0, 0],
-                           [0, 1, 0],
-                           [0, 0, 1],
-                           [1, 1, 0]])
+data = np.zeros((nx*ny), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+data['a_position'] = plane
+data['a_color'] = color
 
-I = np.array([0, 1, 2, 0, 2, 3], dtype=np.uint32)
+#I = np.array([0, 1, 2, 0, 2, 3], dtype=np.uint32)
 tri = np.array(triangle.delaunay(data['a_position'][:, 0:2]), dtype=np.uint32)
 programGround = glumpy_setting.ProgramPlane(data=data, name='test', face=tri)
 
