@@ -9,6 +9,7 @@ import struct
 import os
 import json
 import skimage.measure
+import triangle
 from glumpy import glm
 from sklearn.decomposition import PCA
 #
@@ -112,7 +113,8 @@ class StreetView3DRegion:
         for panoid in id_2_gps:
             gps = id_2_gps[panoid]
             ecef = base_process.geo_2_ecef(float(gps[0]), float(gps[1]), 22) - self.anchorECEF
-            data['a_position'][idx] = np.asarray([ecef[1], ecef[2], ecef[0]], dtype=np.float32)
+            # TODO: ecef v.s. x-y plane
+            data['a_position'][idx] = np.asarray(ecef, dtype=np.float32)
             idx += 1
         data['a_color'] = [0, 1, 0]
         self.topologyData = data
@@ -136,7 +138,8 @@ class StreetView3D:
         self.matrix_local = np.eye(4, dtype=np.float32)
         self.matrix_offs = np.eye(4, dtype=np.float32)
 
-        self.indices_split, self.plane_split = None, None
+        self.indices_split, self.plane_split, self.gnd_con = None, None, None
+        self.gnd_plane = []
 
 
     def decode_depth_map(self, raw):
@@ -207,13 +210,12 @@ class StreetView3D:
             if angle_diff < 0.3:
                 gnd_indices[np.nonzero(plane_indices == i)] = True
 
-            depth = -p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
+            depth = p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
             depth_map[np.nonzero(plane_indices == i)] = depth[np.nonzero(plane_indices == i)]
 
 
         panorama = scipy.misc.imresize(self.panorama, (height, width), interp='bilinear', mode=None)
         xyz = (np.transpose(v) * np.matlib.repmat(depth_map, 3, 1))
-        #TODO KD-tree
         data = np.zeros((height*width), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
         data['a_position'] = np.transpose(xyz)
         data['a_color'] = np.reshape(np.array(panorama) / 255, (height*width, 3))
@@ -228,25 +230,41 @@ class StreetView3D:
         data_non_gnd = data[np.nonzero(non_con)]
         data_gnd = data[np.nonzero(gnd_con)]
 
-        indices_split_gnd = self.indices_split[np.nonzero(gnd_con)]
-        sel = data_gnd['a_position'][np.nonzero(indices_split_gnd == 2)]
-        #sel_normal = self.plane_split[2]
-        #from sklearn.decomposition import PCA
-        pca = PCA(n_components=2)
-        newData = pca.fit_transform(sel)
-        bbox = base_process.bounding_box(newData)
-        newData2 = np.dot(newData, pca.components_)
-        newData3 = newData2 + pca.mean_
-
         # Store
         self.depthMap = depth_map.reshape((height, width))
         self.gnd_indices = gnd_indices.reshape((height, width))
         self.normal_map = normal_map.reshape(height, width, 3)
         self.ptCLoudData = data_non_gnd
         self.ptCLoudDataGnd = data_gnd
-        self.fix_spherical_inside_out()
+        self.gnd_con = gnd_con
+        #self.fix_spherical_inside_out()
 
         #self.visualize()
+
+        #self.auto_plane()
+
+    def auto_plane(self):
+        indices_split_gnd = self.indices_split[np.nonzero(self.gnd_con)]
+        data_gnd = self.ptCLoudDataGnd
+        plane_split = self.plane_split
+        sel = data_gnd
+        for i in range(1, len(plane_split)):
+            plane = plane_split[i]
+            vec = (plane['nx'], plane['ny'], plane['nz'])
+            angle_diff = base_process.angle_between(vec, (0, 0, -1))
+            if angle_diff < 0.3:
+                sel = data_gnd[np.nonzero(indices_split_gnd == i)]
+                if len(sel) < 3:
+                    continue
+                pca = PCA(n_components=2)
+                data_transfer = pca.fit_transform(sel['a_position'])
+                tri = np.array(triangle.delaunay(data_transfer), dtype=np.uint32)
+                self.gnd_plane.append({'data': sel, 'tri': tri})
+        #bbox = base_process.bounding_box(newData)
+        #newData2 = np.dot(newData, pca.components_)
+        #newData3 = newData2 + pca.mean_
+        #tri = np.array(triangle.delaunay(newData), dtype=np.uint32)
+        #self.test_data , self.test_tri = sel, tri
 
     def visualize(self):
         self.show_pano()
@@ -337,16 +355,17 @@ class StreetView3D:
 
     def global_adjustment(self):
         matrix = np.eye(4, dtype=np.float32)
-        #glm.rotate(matrix, 180, 0, 1, 0)
-        glm.rotate(matrix, self.yaw, 0, 0, -1)
-        glm.rotate(matrix, self.lat, -1, 0, 0)
-        glm.rotate(matrix, self.lon, 0, 1, 0)
+        glm.rotate(matrix, 90, 0, 1, 0)
+        glm.rotate(matrix, 90, 1, 0, 0)
+        glm.rotate(matrix, self.yaw, -1, 0, 0)
+        glm.rotate(matrix, self.lat, 0, -1, 0)
+        glm.rotate(matrix, self.lon, 0, 0, 1)
         self.matrix_global = matrix
 
     def local_adjustment(self, anchor_ecef):
         matrix = np.eye(4, dtype=np.float32)
         ecef = self.ecef - anchor_ecef
-        glm.translate(matrix, ecef[1], ecef[2], ecef[0])
+        glm.translate(matrix, ecef[0], ecef[1], ecef[2])
         self.matrix_local = matrix
 
     def apply_global_adjustment(self):
@@ -395,7 +414,7 @@ class StreetView3D:
     def show_depth(self):
         # The further, the brighter
         # Inverse to inside-out
-        depth_map = self.depthMap * 255 / 50
+        depth_map = -self.depthMap * 255 / 50
         depth_map[np.nonzero(np.isnan(depth_map))] = 255
         depth_map[np.nonzero(depth_map > 255)] = 255
         depth_map /= 255

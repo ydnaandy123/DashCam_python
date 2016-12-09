@@ -12,11 +12,15 @@ A project about dashcam implemented by Python
 6. Create the SV3D according to trajectory(Now, it's important to use the correct anchor!!)
 7. Output the ply file of SV3D constructed from trajectory
 
-## Code
--  example/new_system_pipeline
+## Important
+- Code under example/new_system_pipeline
+- Three major coordinate
+  1. sfm coordinate
+  2. street view 3D in gl (x-y plan, z up to sky) 
+  3. ['geographic coordinate system'](https://en.wikipedia.org/wiki/ECEF)
 - ![pipeline](src/pipeline.gif)
 - TODO:
-  - Fetch the Google data (files lacked anchor's data)
+  - Fetch the Google data for trajectory (files lacked anchor's data)
 
 ## Model Simplify
 - Index map split
