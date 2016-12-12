@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # ==============================================================
-# Let's auto create the plane for SV3D
+# TODO: decimate
+# TODO: plane register
 # ==============================================================
 import numpy as np
 import triangle
@@ -50,7 +51,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
         index = 0
         sv3DRegion.create_topoloy()
         #sv3DRegion.create_single()
-        #sv3DRegion.create_region()
+        sv3DRegion.create_region()
         for sv3D_id, sv3D in sorted(sv3DRegion.sv3D_Dict.items()):
             sv3D.apply_global_adjustment()  # Absolute position on earth (lat, lon, yaw)
             sv3D.apply_local_adjustment()  # Relative position according to anchor (anchor's lat,lon)

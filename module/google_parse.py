@@ -65,11 +65,11 @@ class StreetView3DRegion:
             with open(pano_id_dir + '.json') as data_file:
                 pano_meta = json.load(data_file)
                 sv3d = StreetView3D(pano_meta, panorama)
-                #sv3d.create_ptcloud(self.sphericalRay)
+                sv3d.create_ptcloud(self.sphericalRay)
                 sv3d.global_adjustment()
                 sv3d.local_adjustment(self.anchorECEF)
                 # TODO: reduce some redundant work
-                #self.sv3D_Dict[self.anchorId] = sv3d
+                self.sv3D_Dict[self.anchorId] = sv3d
                 self.anchorMatrix = np.dot(sv3d.matrix_local, sv3d.matrix_global)
                 self.anchorYaw = sv3d.yaw
                 data_file.close()
@@ -80,6 +80,8 @@ class StreetView3DRegion:
 
     def create_region(self):
         for panoId in sorted(self.fileMeta['id2GPS']):
+            if panoId == self.anchorId:
+                continue
             pano_id_dir = os.path.join(self.dataDir, panoId)
             panorama = scipy.misc.imread(pano_id_dir + '.jpg').astype(np.float)
             with open(pano_id_dir + '.json') as data_file:
@@ -225,7 +227,7 @@ class StreetView3D:
         con &= ~np.isnan(data['a_position'][:, 1])
         con &= ~np.isnan(data['a_position'][:, 2])
         non_con = con & ~gnd_indices
-        gnd_con = con & gnd_indices
+        gnd_con = con
 
         data_non_gnd = data[np.nonzero(non_con)]
         data_gnd = data[np.nonzero(gnd_con)]
@@ -241,18 +243,19 @@ class StreetView3D:
 
         #self.visualize()
 
-        #self.auto_plane()
+        self.auto_plane()
 
     def auto_plane(self):
         indices_split_gnd = self.indices_split[np.nonzero(self.gnd_con)]
         data_gnd = self.ptCLoudDataGnd
         plane_split = self.plane_split
         sel = data_gnd
+
         for i in range(1, len(plane_split)):
             plane = plane_split[i]
             vec = (plane['nx'], plane['ny'], plane['nz'])
             angle_diff = base_process.angle_between(vec, (0, 0, -1))
-            if angle_diff < 0.3:
+            if angle_diff < 0.3 or True:
                 sel = data_gnd[np.nonzero(indices_split_gnd == i)]
                 if len(sel) < 3:
                     continue
@@ -260,6 +263,7 @@ class StreetView3D:
                 data_transfer = pca.fit_transform(sel['a_position'])
                 tri = np.array(triangle.delaunay(data_transfer), dtype=np.uint32)
                 self.gnd_plane.append({'data': sel, 'tri': tri})
+
         #bbox = base_process.bounding_box(newData)
         #newData2 = np.dot(newData, pca.components_)
         #newData3 = newData2 + pca.mean_
@@ -355,6 +359,7 @@ class StreetView3D:
 
     def global_adjustment(self):
         matrix = np.eye(4, dtype=np.float32)
+        # Change xy-plan to ecef coordinate
         glm.rotate(matrix, 90, 0, 1, 0)
         glm.rotate(matrix, 90, 1, 0, 0)
         glm.rotate(matrix, self.yaw, -1, 0, 0)
