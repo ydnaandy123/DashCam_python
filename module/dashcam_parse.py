@@ -40,8 +40,9 @@ def parse_trajectory(trajectory):
     for key, value in sorted(trajectory.items()):
         #print(key)
         data[cur]['a_position'] = value
+        data[cur]['a_color'] = [1, 1, cur]
         cur += 1
-    #data['a_color'] /= 255.0
+    data['a_color'][:, 2] /= cur
     return data
 
 def parse_matrix(transformation):

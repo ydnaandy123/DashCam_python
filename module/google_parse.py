@@ -33,7 +33,8 @@ class StreetView3DRegion:
 
         self.anchorId, self.anchorLat, self.anchorLon = None, 0, 0
         self.anchorECEF, self.anchorMatrix, self.anchorYaw = np.zeros(3), np.eye(4, dtype=np.float32), 0
-        self.sv3D_Dict, self.topologyData = {}, None
+        self.sv3D_Dict, self.topologyData, self.trajectoryData = {}, None, None
+        self.panoramaList, self.sv3D_Time = [], []
 
         self.QQ = False
 
@@ -69,18 +70,19 @@ class StreetView3DRegion:
                 sv3d.global_adjustment()
                 sv3d.local_adjustment(self.anchorECEF)
                 # TODO: reduce some redundant work
-                self.sv3D_Dict[self.anchorId] = sv3d
+                #self.sv3D_Dict[self.anchorId] = sv3d
                 self.anchorMatrix = np.dot(sv3d.matrix_local, sv3d.matrix_global)
                 self.anchorYaw = sv3d.yaw
                 data_file.close()
 
-        except:
+        except FileNotFoundError:
             print('no anchor file QQ')
             self.QQ = True
 
     def create_region(self):
         for panoId in sorted(self.fileMeta['id2GPS']):
             if panoId == self.anchorId:
+                # the anchor
                 continue
             pano_id_dir = os.path.join(self.dataDir, panoId)
             panorama = scipy.misc.imread(pano_id_dir + '.jpg').astype(np.float)
@@ -92,6 +94,31 @@ class StreetView3DRegion:
                 sv3d.local_adjustment(self.anchorECEF)
                 self.sv3D_Dict[panoId] = sv3d
                 data_file.close()
+
+    def create_region_time(self, start=0, end=100):
+        pano_t = 0
+        pano_set = set()
+        for keyframe in sorted(self.fileMeta['keyframe_2_id']):
+            panoId = self.fileMeta['keyframe_2_id'][keyframe]
+            if panoId in pano_set:
+                # already existed
+                continue
+            pano_set.add(panoId)
+            print(keyframe, panoId)
+            if end > pano_t >= start:
+                pano_id_dir = os.path.join(self.dataDir, panoId)
+                panorama = scipy.misc.imread(pano_id_dir + '.jpg').astype(np.float)
+                self.panoramaList.append(cv2.imread(pano_id_dir + '.jpg', 0))
+                with open(pano_id_dir + '.json') as data_file:
+                    pano_meta = json.load(data_file)
+                    sv3d = StreetView3D(pano_meta, panorama)
+                    sv3d.create_ptcloud(self.sphericalRay)
+                    sv3d.global_adjustment()
+                    sv3d.local_adjustment(self.anchorECEF)
+                    #self.sv3D_Dict[panoId] = sv3d
+                    self.sv3D_Time.append(sv3d)
+                    data_file.close()
+            pano_t += 1
 
     def create_single(self):
         for panoId in sorted(self.fileMeta['id2GPS']):
@@ -121,12 +148,26 @@ class StreetView3DRegion:
         data['a_color'] = [0, 1, 0]
         self.topologyData = data
 
+    def create_trajectory(self):
+        keyframe_2_id = sorted(self.fileMeta['keyframe_2_id'])
+        keyframe_num = len(keyframe_2_id)
+        data = np.zeros(pano_num, dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+        idx = 0
+        for panoid in id_2_gps:
+            gps = id_2_gps[panoid]
+            ecef = base_process.geo_2_ecef(float(gps[0]), float(gps[1]), 22) - self.anchorECEF
+            # TODO: ecef v.s. x-y plane
+            data['a_position'][idx] = np.asarray(ecef, dtype=np.float32)
+            idx += 1
+        data['a_color'] = [0, 1, 0]
+        self.trajectoryData = data
+
+
 class StreetView3D:
     def __init__(self, pano_meta, panorama):
-        self.panoMeta = pano_meta
-        self.panorama = panorama
+        self.panoMeta, self.panorama = pano_meta, panorama
         self.depthHeader, self.depthMapIndices, self.depthMapPlanes = {}, [], []
-        self.depthMap, self.ptCLoudData, self.ptCLoudDataGnd, self.ptCLoudDataGndGrid = None, None, None, None
+        self.depthMap, self.ptCLoudData, self.ptCLoudDataGnd, self.ptCLoudDataGndGrid, self.data = None, None, None, None, None
         self.normal_map, self.gnd_indices = None, None
         self.lat, self.lon, self.yaw = float(pano_meta['Lat']), float(pano_meta['Lon']), float(pano_meta['ProjectionPanoYawDeg'])
         self.ecef = base_process.geo_2_ecef(self.lat, self.lon, 22)
@@ -140,7 +181,7 @@ class StreetView3D:
         self.matrix_local = np.eye(4, dtype=np.float32)
         self.matrix_offs = np.eye(4, dtype=np.float32)
 
-        self.indices_split, self.plane_split, self.gnd_con = None, None, None
+        self.indices_split, self.plane_split, self.gnd_con, self.non_con = None, None, None, None
         self.gnd_plane = []
 
 
@@ -236,14 +277,14 @@ class StreetView3D:
         self.depthMap = depth_map.reshape((height, width))
         self.gnd_indices = gnd_indices.reshape((height, width))
         self.normal_map = normal_map.reshape(height, width, 3)
-        self.ptCLoudData = data_non_gnd
-        self.ptCLoudDataGnd = data_gnd
+        self.ptCLoudData = data
         self.gnd_con = gnd_con
+        self.non_con = non_con
         #self.fix_spherical_inside_out()
 
         #self.visualize()
 
-        self.auto_plane()
+        #self.auto_plane()
 
     def auto_plane(self):
         indices_split_gnd = self.indices_split[np.nonzero(self.gnd_con)]
@@ -374,24 +415,14 @@ class StreetView3D:
         self.matrix_local = matrix
 
     def apply_global_adjustment(self):
-        self.ptCLoudData['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudData['a_position'],
-                                                                    m4=self.matrix_global)
-
-        self.ptCLoudDataGnd['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudDataGnd['a_position'],
-                                                                       m4=self.matrix_global)
-
-#        self.ptCLoudDataGndGrid['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudDataGndGrid['a_position'],
-#                                                                       m4=self.matrix_global)
+        self.ptCLoudData['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudData['a_position'], m4=self.matrix_global)
 
     def apply_local_adjustment(self):
+        self.ptCLoudData['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudData['a_position'], m4=self.matrix_local)
+
+    def apply_anchor_adjustment(self, anchor_matrix):
         self.ptCLoudData['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudData['a_position'],
-                                                                    m4=self.matrix_local)
-
-        self.ptCLoudDataGnd['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudDataGnd['a_position'],
-                                                                       m4=self.matrix_local)
-
-#        self.ptCLoudDataGndGrid['a_position'] = base_process.sv3d_apply_m4(data=self.ptCLoudDataGndGrid['a_position'],
-#                                                                       m4=self.matrix_local)
+                                                                    m4=np.linalg.inv(anchor_matrix))
     def show_pano(self):
         panorama = self.panorama
         #panorama[100-10:100+10, 100-10:100+10, :] = [255, 0, 0]

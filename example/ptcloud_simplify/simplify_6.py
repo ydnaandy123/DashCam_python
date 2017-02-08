@@ -16,7 +16,7 @@ import glumpy_setting
 import base_process
 
 
-sleIndex = 0
+sleIndex = 6
 createSV = True
 needMatchInfo3d = True
 needVisual = True
@@ -51,7 +51,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
         index = 0
         sv3DRegion.create_topoloy()
         #sv3DRegion.create_single()
-        sv3DRegion.create_region()
+        #sv3DRegion.create_region()
         for sv3D_id, sv3D in sorted(sv3DRegion.sv3D_Dict.items()):
             sv3D.apply_global_adjustment()  # Absolute position on earth (lat, lon, yaw)
             sv3D.apply_local_adjustment()  # Relative position according to anchor (anchor's lat,lon)
@@ -88,7 +88,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
 """
 Manual boxing
 """
-'''
+
 xmin, xmax = -10, 10
 ymin, ymax = -20, 20
 
@@ -124,14 +124,16 @@ for y in range(0, ny):
             #scipy.misc.imshow(pano)
 
 
-#scipy.misc.imshow(pano_copy)
+scipy.misc.imshow(pano_copy)
 data = np.zeros((nx*ny), dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
 data['a_position'] = plane
 data['a_color'] = color
 
-#I = np.array([0, 1, 2, 0, 2, 3], dtype=np.uint32)
+I = np.array([0, 1, 2, 0, 2, 3], dtype=np.uint32)
 tri = np.array(triangle.delaunay(data['a_position'][:, 0:2]), dtype=np.uint32)
-'''
+
+programGround = glumpy_setting.ProgramPlane(data=data, name='test',
+                                            face=tri)
 
 
 """
@@ -139,14 +141,13 @@ For Visualize
 """
 if needVisual:
     gpyWindow = glumpy_setting.GpyWindow()
-
     for i in range(0, len(sv3D.gnd_plane)):
         programGround = glumpy_setting.ProgramPlane(data=sv3D.gnd_plane[i]['data'], name='test',
                                                     face=sv3D.gnd_plane[i]['tri'])
         gpyWindow.add_program(programGround)
 
     if createSV:
-        gpyWindow.add_program(programSV3DRegion)
+        #gpyWindow.add_program(programSV3DRegion)
         gpyWindow.add_program(programSV3DTopology)
         if needGround:
             gpyWindow.add_program(programSV3DRegionGnd)

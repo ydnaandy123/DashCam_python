@@ -211,11 +211,11 @@ class ProgramTrajectory:
         self.matrix_inv = np.linalg.inv(self.matrix)
         self.isAligned = is_aligned
 
-        program = gloo.Program(vertexPoint, fragmentSelect)
+        program = gloo.Program(vertexPoint, fragmentAlpha)
         program.bind(self.data)
 
-        program['color'] = (0, 0, 1, 1)
-        program['color_sel'] = 0
+        program['alpha'] = 1.0
+        #program['color_sel'] = 0
         program['a_pointSize'] = point_size
         program['u_model'] = np.eye(4, dtype=np.float32)
         program['u_view'] = np.eye(4, dtype=np.float32)
@@ -691,6 +691,20 @@ void main()
     }
     else{
         gl_FragColor = color;
+    }
+}
+"""
+fragmentSelectAttribute = """
+varying vec3 v_color;
+attribute vec3 a_color;
+uniform int color_sel;
+void main()
+{
+    if(color_sel == 1){
+        gl_FragColor = vec4(v_color, 1.0);
+    }
+    else{
+        gl_FragColor = vec4(a_color;
     }
 }
 """
