@@ -14,6 +14,7 @@ from glumpy import glm
 from sklearn.decomposition import PCA
 #
 import base_process
+import matplotlib.pyplot as plt
 
 storePath = '/home/andy/src/Google/panometa/'
 
@@ -34,7 +35,7 @@ class StreetView3DRegion:
         self.anchorId, self.anchorLat, self.anchorLon = None, 0, 0
         self.anchorECEF, self.anchorMatrix, self.anchorYaw = np.zeros(3), np.eye(4, dtype=np.float32), 0
         self.sv3D_Dict, self.topologyData, self.trajectoryData = {}, None, None
-        self.panoramaList, self.sv3D_Time = [], []
+        self.panoramaList, self.sv3D_Time, self.sv3D_location = [], [], []
 
         self.QQ = False
 
@@ -117,6 +118,7 @@ class StreetView3DRegion:
                     sv3d.local_adjustment(self.anchorECEF)
                     #self.sv3D_Dict[panoId] = sv3d
                     self.sv3D_Time.append(sv3d)
+                    self.sv3D_location.append(sv3d.matrix_local[3, :3])
                     data_file.close()
             pano_t += 1
 
@@ -146,6 +148,8 @@ class StreetView3DRegion:
             data['a_position'][idx] = np.asarray(ecef, dtype=np.float32)
             idx += 1
         data['a_color'] = [0, 1, 0]
+        data['a_position'] = base_process.sv3d_apply_m4(data=data['a_position'],
+                                   m4=np.linalg.inv(self.anchorMatrix))
         self.topologyData = data
 
     def create_trajectory(self):
@@ -288,7 +292,8 @@ class StreetView3D:
 
     def auto_plane(self):
         indices_split_gnd = self.indices_split[np.nonzero(self.gnd_con)]
-        data_gnd = self.ptCLoudDataGnd
+        data_gnd = self.ptCLoudData[np.nonzero(self.gnd_con)]
+        #data_gnd = self.ptCLoudData
         plane_split = self.plane_split
         sel = data_gnd
 
@@ -337,6 +342,18 @@ class StreetView3D:
                 label_map[np.nonzero(all_labels == l)] = 1
                 indices_split[np.nonzero(all_labels == l)] = cur_idx
                 plane_split.append(plane)
+                contours = skimage.measure.find_contours(label_map, 0.5)
+                fig, ax = plt.subplots()
+                ax.imshow(label_map, interpolation='nearest', cmap=plt.cm.gray)
+
+                for n, contour in enumerate(contours):
+                    ax.plot(contour[:, 1], contour[:, 0], linewidth=2)
+
+                ax.axis('image')
+                ax.set_xticks([])
+                ax.set_yticks([])
+                plt.show()
+                scipy.misc.imshow(label_map)
                 #cv2.imshow('image', indices_split/cur_idx)
                 #cv2.waitKey(0)
 

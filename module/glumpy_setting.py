@@ -117,7 +117,7 @@ class ProgramPlane:
 class ProgramSV3DRegion:
     def __init__(self, data=None, name='ProgramSV3DRegion',
                  point_size=1, anchor_matrix=np.eye(4, dtype=np.float32), anchor_yaw=0,
-                 alpha=1.0, is_inverse=False, is_yaw=False):
+                 alpha=1.0, is_inverse=True, is_yaw=False):
         self.data = data.view(gloo.VertexBuffer)
         self.anchor_matrix = anchor_matrix
         self.anchor_matrix_inv = np.linalg.inv(self.anchor_matrix)

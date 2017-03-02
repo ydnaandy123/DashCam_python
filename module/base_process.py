@@ -36,6 +36,17 @@ def gl_2_gps_great_circle(vec):
     return lat, lon
 
 
+def pos_2_deg(x, y, z):
+    lng = np.arctan(x / y) / np.pi * 180
+    if x >= 0 and y >= 0:
+        lng += + 180
+    elif x <= 0 and y >= 0:
+        lng -= 180
+    r = np.linalg.norm([x, y, 0])
+    lat = np.arctan(z / r) / np.pi * 180
+    return lng, lat
+
+
 def gl_2_ecef_great_circle(vec):
     x, y, z = vec
     r = np.linalg.norm((x, y, 0))

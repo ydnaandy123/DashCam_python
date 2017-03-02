@@ -170,3 +170,6 @@ class PanoramaMetadata:
 			
 			tmp += "%s: %s\n" % x
 		return tmp
+
+
+pano = GetPanoramaMetadata(lat=27.683528, lon=-99.580078)
