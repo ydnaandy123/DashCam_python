@@ -267,7 +267,7 @@ class StreetView3D:
         data['a_position'] = np.transpose(xyz)
         data['a_color'] = np.reshape(np.array(panorama) / 255, (height*width, 3))
 
-        self.split_plane()
+        #self.split_plane()
         con = ~np.isnan(data['a_position'][:, 0])
         con &= ~np.isnan(data['a_position'][:, 1])
         con &= ~np.isnan(data['a_position'][:, 2])
@@ -286,7 +286,7 @@ class StreetView3D:
         self.non_con = non_con
         #self.fix_spherical_inside_out()
 
-        #self.visualize()
+        self.visualize()
 
         #self.auto_plane()
 
@@ -353,7 +353,7 @@ class StreetView3D:
                 ax.set_xticks([])
                 ax.set_yticks([])
                 plt.show()
-                scipy.misc.imshow(label_map)
+                #scipy.misc.imshow(label_map)
                 #cv2.imshow('image', indices_split/cur_idx)
                 #cv2.waitKey(0)
 

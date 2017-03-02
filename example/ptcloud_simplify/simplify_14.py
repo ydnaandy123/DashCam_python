@@ -109,7 +109,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
 
         show_pano = np.concatenate((ori_pano, syn_pano), axis=1)
         #scipy.misc.imsave('yo.png', syn_pano)
-        scipy.misc.imshow(show_pano)
+        #scipy.misc.imshow(show_pano)
 
         programSV3DRegion = glumpy_setting.ProgramSV3DRegion(
             data=data, name='ProgramSV3DRegion',

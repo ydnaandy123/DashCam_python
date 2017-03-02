@@ -42,7 +42,15 @@ def create_ptcloud(v, depthMapPlanes, depthMapIndices, numPlanes):
         depthMap = depth_map.reshape((height, width))
         return depthMap
 
-
+def show_depth(self):
+    # The further, the brighter
+    # Inverse to inside-out
+    depth_map = -self.depthMap * 255 / 50
+    depth_map[np.nonzero(np.isnan(depth_map))] = 255
+    depth_map[np.nonzero(depth_map > 255)] = 255
+    depth_map /= 255
+    scipy.misc.imshow(depth_map)
+    scipy.misc.imsave('depth.png', depth_map)
 
 v = create_spherical_ray(256, 512)
 depthMap = create_ptcloud(create_ptcloud, depthMapPlanes, depthMapIndices, numPlanes)
