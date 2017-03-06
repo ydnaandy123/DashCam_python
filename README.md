@@ -11,7 +11,7 @@ A project about dashcam implemented by Python
 5. Fetch the Google data (Use trajectory)
 6. Create the SV3D according to trajectory(Now, it's important to use the correct anchor!!)
 7. Output the ply file of SV3D constructed from trajectory
-More details in pipeline(src/pipeline.pptx)
+More details in [pipeline](src/pipeline.pptx)
 
 ## Important
 - Code under example/new_system_pipeline
