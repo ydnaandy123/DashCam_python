@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # ==============================================================
-# viewpoint systhesis
+# viewpoint systhesis multiple
 # ==============================================================
 import numpy as np
 import sys

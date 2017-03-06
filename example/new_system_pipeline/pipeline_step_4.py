@@ -10,7 +10,7 @@ sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')  # use the 
 import file_process
 import google_store
 
-sleIndex = 0
+sleIndex = 1
 
 # Create PanoFetcher
 zoom, radius = 1, 30
@@ -21,7 +21,7 @@ dashCamFileProcess = file_process.DashCamFileProcessor()
 
 # Select one of the fileName among the 50 selected files
 if __name__ == '__main__':
-    for i in range(46, 49+1):
+    for i in range(sleIndex, sleIndex+1):
 
         index = i
         fileID = str(dashCamFileProcess.list50[index][1])

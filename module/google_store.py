@@ -2,8 +2,11 @@
 import numpy as np
 import cv2
 import urllib
-import urllib2
-import libxml2
+from urllib.request import urlopen
+import urllib.request
+from lxml import etree
+import lxml
+
 import json
 import os
 
@@ -261,7 +264,7 @@ class PanoramaMetadata:
 
 
 def get_url_contents(url):
-    f = urllib2.urlopen(url)
+    f = urlopen(url)
     data = f.read()
     f.close()
     return data
@@ -284,10 +287,15 @@ def get_panorama_metadata(panoid=None, lat=None, lon=None, radius=30):
         url += '&panoid=%s'  # panoid to retrieve
         url = url % (base_uri, panoid)
 
-    findpanoxml = get_url_contents(url)
-    if not findpanoxml.find('data_properties'):
-        return None
-    return PanoramaMetadata(libxml2.parseDoc(findpanoxml))
+    str_url = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=26693255&retmode=text&rettype=xml'
+    request = urllib.request.Request(str_url)
+    xml_text = urllib.request.urlopen(request).read()
+    root = lxml.etree.XML(xml_text)
+    journal_name = root.find('PubmedArticle').find('MedlineCitation').find('Article').find('Journal').find('Title').text
+    # TODO http://cangfengzhe.github.io/python/python-lxml.html
+    # TODO http://python3-cookbook.readthedocs.io/zh_CN/latest/c06/p03_parse_simple_xml_data.html
+    # TODO https://docs.python.org/2/library/xml.etree.elementtree.html
+    return PanoramaMetadata(result)
 
 
 # h_base, w_base should be renamed...

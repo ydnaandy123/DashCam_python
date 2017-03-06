@@ -27,16 +27,24 @@ class StreetView3DRegion:
         with open(self.metaDir) as meta_file:
             self.fileMeta = json.load(meta_file)
             meta_file.close()
-
+        """
         # All the google depth maps seem to be store
         # as this size(256, 512), at least what I've seen
+        """
         self.sphericalRay = create_spherical_ray(256, 512)
-
+        """
+        # For anchor information
+        """
         self.anchorId, self.anchorLat, self.anchorLon = None, 0, 0
         self.anchorECEF, self.anchorMatrix, self.anchorYaw = np.zeros(3), np.eye(4, dtype=np.float32), 0
-        self.sv3D_Dict, self.topologyData, self.trajectoryData = {}, None, None
+        """
+        # Child object StreetView3D
+        """
+        # without time factor
+        self.sv3D_Dict, self.topologyData = {}, None
+        # with time factor
         self.panoramaList, self.sv3D_Time, self.sv3D_location = [], [], []
-
+        # TODO query google data><
         self.QQ = False
 
     def init_region(self, anchor=None):
@@ -47,7 +55,7 @@ class StreetView3DRegion:
         """
         if anchor is None:
             print('Random anchor')
-            for panoId in sorted(self.fileMeta['id2GPS']):
+            for panoId in (self.fileMeta['id2GPS']):
                 print('anchor is:', panoId, self.fileMeta['id2GPS'][panoId])
                 self.anchorId, self.anchorLat, self.anchorLon = \
                     panoId, float(self.fileMeta['id2GPS'][panoId][0]), float(self.fileMeta['id2GPS'][panoId][1])
@@ -87,6 +95,7 @@ class StreetView3DRegion:
                 continue
             pano_id_dir = os.path.join(self.dataDir, panoId)
             panorama = scipy.misc.imread(pano_id_dir + '.jpg').astype(np.float)
+            self.panoramaList.append(panorama)
             with open(pano_id_dir + '.json') as data_file:
                 pano_meta = json.load(data_file)
                 sv3d = StreetView3D(pano_meta, panorama)
@@ -94,6 +103,8 @@ class StreetView3DRegion:
                 sv3d.global_adjustment()
                 sv3d.local_adjustment(self.anchorECEF)
                 self.sv3D_Dict[panoId] = sv3d
+                self.sv3D_Time.append(sv3d)
+                self.sv3D_location.append(sv3d.matrix_local[3, :3])
                 data_file.close()
 
     def create_region_time(self, start=0, end=100):
@@ -267,7 +278,7 @@ class StreetView3D:
         data['a_position'] = np.transpose(xyz)
         data['a_color'] = np.reshape(np.array(panorama) / 255, (height*width, 3))
 
-        #self.split_plane()
+        self.split_plane()
         con = ~np.isnan(data['a_position'][:, 0])
         con &= ~np.isnan(data['a_position'][:, 1])
         con &= ~np.isnan(data['a_position'][:, 2])
@@ -286,7 +297,7 @@ class StreetView3D:
         self.non_con = non_con
         #self.fix_spherical_inside_out()
 
-        self.visualize()
+        #self.visualize()
 
         #self.auto_plane()
 
@@ -342,6 +353,7 @@ class StreetView3D:
                 label_map[np.nonzero(all_labels == l)] = 1
                 indices_split[np.nonzero(all_labels == l)] = cur_idx
                 plane_split.append(plane)
+                '''
                 contours = skimage.measure.find_contours(label_map, 0.5)
                 fig, ax = plt.subplots()
                 ax.imshow(label_map, interpolation='nearest', cmap=plt.cm.gray)
@@ -356,6 +368,7 @@ class StreetView3D:
                 #scipy.misc.imshow(label_map)
                 #cv2.imshow('image', indices_split/cur_idx)
                 #cv2.waitKey(0)
+                '''
 
                 cur_idx += 1
 
@@ -458,8 +471,9 @@ class StreetView3D:
             #cv2.imwrite('index{}.png'.format(str(i)), index_map.reshape((height, width, 3)))
 
         #cv2.imwrite('index_map.png', index_map_all.reshape((height, width, 3)))
-        cv2.imshow('image', index_map_all.reshape((height, width, 3)).astype(np.uint8))
-        cv2.waitKey(0)
+        #cv2.imshow('image', index_map_all.reshape((height, width, 3)).astype(np.uint8))
+        #cv2.waitKey(0)
+        scipy.misc.imshow(index_map_all.reshape((height, width, 3)).astype(np.uint8))
 
     def show_normal(self):
         scipy.misc.imshow(self.normal_map)
@@ -488,8 +502,9 @@ class StreetView3D:
             #cv2.imwrite('index{}.png'.format(str(i)), index_map.reshape((height, width, 3)))
 
         #cv2.imwrite('index_map.png', index_map_all.reshape((height, width, 3)))
-        cv2.imshow('image', index_map_all.reshape((height, width, 3)).astype(np.uint8))
-        cv2.waitKey(0)
+        #cv2.imshow('image', index_map_all.reshape((height, width, 3)).astype(np.uint8))
+        #cv2.waitKey(0)
+        scipy.misc.imshow(index_map_all.reshape((height, width, 3)).astype(np.uint8))
 
     def show_gnd(self):
         scipy.misc.imshow(self.gnd_indices)

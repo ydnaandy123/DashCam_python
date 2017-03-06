@@ -5,9 +5,6 @@
 import numpy as np
 import sys
 import scipy.misc
-import cv2
-from sklearn import linear_model, datasets
-from sklearn.metrics import mean_squared_error
 
 sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')  # use the module under 'module'
 import file_process
@@ -23,7 +20,7 @@ createSV = True
 createSFM = False
 needAlign = True
 needMatchInfo3d = True
-needVisual = False
+needVisual = True
 needGround = False
 mapType = '_trajectory' # [_info3d, _trajectory]
 randomPos = [2, 7, 0]
@@ -61,7 +58,8 @@ for fileIndex in range(sleIndex, sleIndex+1):
     sv3DRegion.init_region(anchor=anchor)
     if createSV:
         sv3DRegion.create_topoloy()
-        sv3DRegion.create_region_time(start=10, end=11)
+        #sv3DRegion.create_region_time(start=10, end=11)
+        sv3DRegion.create_region()
         pano_length = len(sv3DRegion.panoramaList)
         anchor_inv = np.linalg.inv(sv3DRegion.anchorMatrix)
         zero_vec, pano_ori_set, dis_len_set = [0, 0, 0, 1], np.zeros((pano_length, 3)), np.zeros((pano_length))
@@ -107,7 +105,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
                     img_y = int(-(lat - 90) / 180.0 * 256.0)
                     syn_pano[img_y, img_x, :] = point['a_color']
 
-        show_pano = np.concatenate((ori_pano, syn_pano), axis=1)
+        #show_pano = np.concatenate((ori_pano, syn_pano), axis=1)
         #scipy.misc.imsave('yo.png', syn_pano)
         #scipy.misc.imshow(show_pano)
 
@@ -152,7 +150,7 @@ if needVisual:
     if createSV:
         gpyWindow.add_program(programSV3DRegion)
         #gpyWindow.add_program(programSV3DTopology)
-        gpyWindow.add_program(programSV3DNearest)
+        #gpyWindow.add_program(programSV3DNearest)
         if needGround:
             gpyWindow.add_program(programSV3DRegionGnd)
 
