@@ -299,6 +299,44 @@ class ProgramSV3DTopology:
         self.data['a_position'] = base_process.sv3d_apply_m4(data=self.data['a_position'], m4=np.linalg.inv(matrix))
 
 
+class GpyViewWindow:
+    def __init__(self, data, tri):
+        window = app.Window(width=512, height=256,
+                            color=(0.0, 0.0, 0.0, 1.00))
+
+        data = data.view(gloo.VertexBuffer)
+        tri = tri.view(gloo.IndexBuffer)
+
+        view_program = gloo.Program(vertexView, fragmentView)
+        view_program.bind(data)
+
+        framebuffer = np.zeros((window.height, window.width * 3), dtype=np.uint8)
+        self.first = True # Why this need self?
+
+        @window.event
+        def on_draw(dt):
+            window.clear()
+            view_program.draw(gl.GL_TRIANGLES, tri)
+            if self.first:
+                print('First')
+                gl.glReadPixels(0, 0, window.width, window.height,
+                                gl.GL_RGB, gl.GL_UNSIGNED_BYTE, framebuffer)
+                png.from_array(framebuffer, 'RGB').save('screenshot{}.png'.format(1))
+                self.first = False
+
+        @window.event
+        def on_resize(width, height):
+            pass
+
+        @window.event
+        def on_init():
+            gl.glEnable(gl.GL_DEPTH_TEST)
+
+    @staticmethod
+    def run():
+        app.run()
+
+
 class GpyWindow:
     def __init__(self):
         self.programs = []
@@ -715,5 +753,23 @@ uniform float alpha;
 void main()
 {
     gl_FragColor = vec4(v_color, alpha);
+}
+"""
+vertexView = """
+attribute vec3 a_color;         // Vertex color
+attribute vec3 a_position;      // Vertex position
+varying vec3   v_color;         // Interpolated fragment color (out)
+void main()
+{
+    v_color = a_color;
+    gl_Position = vec4(a_position,1.0);
+}
+"""
+
+fragmentView = """
+varying vec3   v_color;         // Interpolated fragment color (in)
+void main()
+{
+    gl_FragColor = vec4(v_color, 1.0);
 }
 """
