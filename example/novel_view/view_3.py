@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # ==============================================================
-# viewpoint systhesis multiple interploated
+# viewpoint systhesis multiple interploated (show on openGl)
 # ==============================================================
 import numpy as np
 import sys

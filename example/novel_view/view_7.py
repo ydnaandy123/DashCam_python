@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # ==============================================================
-# viewpoint systhesis single interploated (show on openGl) combine texture
+# viewpoint systhesis single plane-base
 # ==============================================================
 import numpy as np
 import sys
@@ -17,17 +17,17 @@ import base_process
 
 
 sleIndex = 3
-addPlane = False  # need open auto_plane in google_parse
 createSV = True
 createSFM = False
 needAlign = True
 needMatchInfo3d = True
+imageSynthesis = True
+needGround = False
+addPlane = False  # need open auto_plane in google_parse
 needVisual = True
 needTexture = False
-needGround = True
-imageSynthesis = True
 mapType = '_trajectory'  # [_info3d, _trajectory]
-randomPos = [0, 0, 0]
+randomPos = [5, 0, 0]
 randomDeg = 0
 
 # Create dashCamFileProcess and load 50 top Dashcam
@@ -62,7 +62,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
     sv3DRegion.init_region(anchor=anchor)
     if createSV:
         sv3DRegion.create_topoloy()
-        sv3DRegion.create_region_time(start=8, end=9)
+        sv3DRegion.create_region_time(start=6, end=11)
         # sv3DRegion.create_region()
         pano_length = len(sv3DRegion.panoramaList)
         anchor_inv = np.linalg.inv(sv3DRegion.anchorMatrix)
@@ -107,10 +107,9 @@ for fileIndex in range(sleIndex, sleIndex+1):
                     dataNearest = np.zeros(pano_length + 1, dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
                     dataNearest['a_color'] = [0, 1, 0]
                     dataNearest['a_color'][nearest_pano_idx] = [1, 1, 0]
-                    for pano_i in range(0, pano_length):
-                        dataNearest['a_position'][pano_i] = pano_ori_set[pano_i]
-                        dataNearest['a_position'][-1] = randomPos
-                        dataNearest['a_color'][-1] = [1, 0, 0]
+                    dataNearest['a_position'][0:-1] = pano_ori_set
+                    dataNearest['a_position'][-1] = randomPos
+                    dataNearest['a_color'][-1] = [1, 0, 0]
                 # calculate synthesis view
                 ori_pano = scipy.misc.imresize(sv3D.panorama, (256, 512), interp='bilinear', mode=None) / 255.0
                 index_pano = np.full((256, 512), False, dtype=bool)
@@ -143,30 +142,6 @@ for fileIndex in range(sleIndex, sleIndex+1):
                     texture_tri = np.array(triangle.delaunay(data_transfer), dtype=np.uint32)
                     texture_data['a_position'][:, 0] = texture_data['a_position'][:, 0] / 256.0 - 1.0
                     texture_data['a_position'][:, 1] = texture_data['a_position'][:, 1] / 128.0 - 1.0
-                if True:
-                    pp_depth, pp_dense, pp_index = 15, 15, 0
-                    pp_height, pp_width = pp_depth * 2, pp_depth * 4
-                    plane_data = np.zeros((pp_height * pp_width * pp_dense * pp_dense),
-                                          dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
-                    plane_pano = np.zeros((pp_height, pp_width, 3), dtype=np.float32)
-                    for ppy in range(0, pp_height * pp_dense):
-                        for ppx in range(0, pp_width * pp_dense):
-                            x, y, z = (ppx/pp_dense) - (0.5 * pp_width), pp_depth, (ppy/pp_dense) - (0.5 * pp_height)
-                            lng, lat = base_process.pos_2_deg(x, y, z)
-
-                            lng = (lng + randomDeg) % 360
-                            img_x = int(lng / 360.0 * 512.0)
-                            img_y = int(-(lat - 90) / 180.0 * 256.0)
-                            # plane_pano[ppy, ppx, :] = ori_pano[img_y, img_x, :]
-                            plane_data[pp_index]['a_position'] = [x, y, z]
-                            plane_data[pp_index]['a_color'] = ori_pano[img_y, img_x, :]
-                            pp_index += 1
-
-                    pca = PCA(n_components=2)
-                    data_transfer = pca.fit_transform(plane_data['a_position'])
-                    tri = np.array(triangle.delaunay(data_transfer), dtype=np.uint32)
-                    programImage = glumpy_setting.ProgramPlane(data=plane_data, name='test',
-                                                               face=tri)
 
 
 
@@ -228,7 +203,7 @@ if needVisual:
         gpyWindow.add_program(programSV3DTopology)
         if imageSynthesis:
             gpyWindow.add_program(programSV3DNearest)
-            gpyWindow.add_program(programImage)
+            #gpyWindow.add_program(programImage)
         if needGround:
             gpyWindow.add_program(programSV3DRegionGnd)
 

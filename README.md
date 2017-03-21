@@ -22,6 +22,7 @@ A project about dashcam implemented by Python
 - ![pipeline](src/pipeline.gif)
 - TODO:
   - Fetch the Google data for trajectory (files lacked anchor's data)
+  - Fix python2 to python3 some problem...
 
 ## Model Simplify
 - Index map split
