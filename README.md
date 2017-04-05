@@ -34,3 +34,6 @@ A project about dashcam implemented by Python
   - structure the point cloud data
   - down sample single pano
   - adjust different pano relative position
+
+## Work record
+- novel_vew 9~11: [street_overview](src/pipeline.pptx)

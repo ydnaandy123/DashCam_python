@@ -182,7 +182,7 @@ class StreetView3D:
     def __init__(self, pano_meta, panorama):
         self.panoMeta, self.panorama = pano_meta, panorama
         self.depthHeader, self.depthMapIndices, self.depthMapPlanes = {}, [], []
-        self.depthMap, self.ptCLoudData, self.ptCLoudDataGnd, self.ptCLoudDataGndGrid, self.data = None, None, None, None, None
+        self.depthMap, self.ptCLoudData, self.ptCLoudDataGnd, self.ptCLoudDataGndGrid = None, None, None, None
         self.normal_map, self.gnd_indices = None, None
         self.lat, self.lon, self.yaw = float(pano_meta['Lat']), float(pano_meta['Lon']), float(pano_meta['ProjectionPanoYawDeg'])
         self.ecef = base_process.geo_2_ecef(self.lat, self.lon, 22)
@@ -196,8 +196,8 @@ class StreetView3D:
         self.matrix_local = np.eye(4, dtype=np.float32)
         self.matrix_offs = np.eye(4, dtype=np.float32)
 
-        self.indices_split, self.plane_split, self.gnd_con, self.non_con = None, None, None, None
-        self.gnd_plane = []
+        self.indices_split, self.plane_split, self.gnd_con, self.non_con, self.all_con = None, None, None, None, None
+        self.gnd_plane, self.all_plane = [], []
 
 
     def decode_depth_map(self, raw):
@@ -248,6 +248,7 @@ class StreetView3D:
         self.fix_spherical_inside_out()
 
     def create_ptcloud(self, v):
+        # Create point cloud
         height, width = self.depthHeader['panoHeight'], self.depthHeader['panoWidth']
         plane_indices = np.array(self.depthMapIndices)
         depth_map = np.zeros((height * width), dtype=np.float32)
@@ -258,7 +259,7 @@ class StreetView3D:
         # index == 0 refers to the sky
         depth_map[np.nonzero(plane_indices == 0)] = np.nan
         # Create depth per plane
-        for i in range(1, self.depthHeader['numPlanes']):
+        for i in range(0, self.depthHeader['numPlanes']):
             plane = self.depthMapPlanes[i]
             p_depth = np.ones((height * width)) * plane['d']
 
@@ -269,8 +270,8 @@ class StreetView3D:
                 gnd_indices[np.nonzero(plane_indices == i)] = True
 
             depth = p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
+            depth = np.ones((height * width)) * -10
             depth_map[np.nonzero(plane_indices == i)] = depth[np.nonzero(plane_indices == i)]
-
 
         panorama = scipy.misc.imresize(self.panorama, (height, width), interp='bilinear', mode=None)
         xyz = (np.transpose(v) * np.matlib.repmat(depth_map, 3, 1))
@@ -278,15 +279,13 @@ class StreetView3D:
         data['a_position'] = np.transpose(xyz)
         data['a_color'] = np.reshape(np.array(panorama) / 255, (height*width, 3))
 
-        self.split_plane()
+        # Filter out nan point
+        # Split ground with non-ground
         con = ~np.isnan(data['a_position'][:, 0])
         con &= ~np.isnan(data['a_position'][:, 1])
         con &= ~np.isnan(data['a_position'][:, 2])
         non_con = con & ~gnd_indices
-        gnd_con = con
-
-        data_non_gnd = data[np.nonzero(non_con)]
-        data_gnd = data[np.nonzero(gnd_con)]
+        gnd_con = con & gnd_indices
 
         # Store
         self.depthMap = depth_map.reshape((height, width))
@@ -295,18 +294,20 @@ class StreetView3D:
         self.ptCLoudData = data
         self.gnd_con = gnd_con
         self.non_con = non_con
+        self.all_con = con
+        # This will split planes further
+        # indices_split : new indices about planes
+        # plane_split : new independent planes {d, nx, ny, nz}
+        self.split_plane()
         #self.fix_spherical_inside_out()
-
         #self.visualize()
-
         #self.auto_plane()
 
-    def auto_plane(self):
+    def auto_plane_gnd(self):
+        # TODO the condition is no need
         indices_split_gnd = self.indices_split[np.nonzero(self.gnd_con)]
         data_gnd = self.ptCLoudData[np.nonzero(self.gnd_con)]
-        #data_gnd = self.ptCLoudData
         plane_split = self.plane_split
-        sel = data_gnd
 
         for i in range(1, len(plane_split)):
             plane = plane_split[i]
@@ -321,11 +322,19 @@ class StreetView3D:
                 tri = np.array(triangle.delaunay(data_transfer), dtype=np.uint32)
                 self.gnd_plane.append({'data': sel, 'tri': tri})
 
-        #bbox = base_process.bounding_box(newData)
-        #newData2 = np.dot(newData, pca.components_)
-        #newData3 = newData2 + pca.mean_
-        #tri = np.array(triangle.delaunay(newData), dtype=np.uint32)
-        #self.test_data , self.test_tri = sel, tri
+    def auto_plane(self):
+        indices_split = self.indices_split[np.nonzero(self.all_con)]
+        data_gnd = self.ptCLoudData[np.nonzero(self.all_con)]
+        plane_split = self.plane_split
+
+        for i in range(1, len(plane_split)):
+            sel = data_gnd[np.nonzero(indices_split == i)]
+            if len(sel) < 3:
+                continue
+            pca = PCA(n_components=2)
+            data_transfer = pca.fit_transform(sel['a_position'])
+            tri = np.array(triangle.delaunay(data_transfer), dtype=np.uint32)
+            self.all_plane.append({'data': sel, 'tri': tri})
 
     def visualize(self):
         self.show_pano()
@@ -345,59 +354,16 @@ class StreetView3D:
             index_map = np.zeros((height, width), dtype=np.float32)
             index_map[np.nonzero(indices == i)] = 1
             plane = self.depthMapPlanes[i]
-            #cv2.imshow('image', index_map)
-            #cv2.waitKey(0)
             all_labels = skimage.measure.label(index_map, background=0)
             for l in range(1, all_labels.max()+1):
                 label_map = np.zeros((height, width), dtype=np.float32)
                 label_map[np.nonzero(all_labels == l)] = 1
                 indices_split[np.nonzero(all_labels == l)] = cur_idx
                 plane_split.append(plane)
-
-                #im = cv2.cvtColor(label_map, cv2.COLOR_GRAY2BGR)
-
-                #cv2.imshow('image', im)
-                #cv2.waitKey(0)
-                #imgray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-                #ret, thresh = cv2.threshold(imgray, 127, 255, 0)
-                #im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-                '''
-                contours = skimage.measure.find_contours(label_map, 0.5)
-                fig, ax = plt.subplots()
-                ax.imshow(label_map, interpolation='nearest', cmap=plt.cm.gray)
-
-                for n, contour in enumerate(contours):
-                    ax.plot(contour[:, 1], contour[:, 0], linewidth=2)
-
-                ax.axis('image')
-                ax.set_xticks([])
-                ax.set_yticks([])
-                plt.show()
-                #scipy.misc.imshow(label_map)
-                #cv2.imshow('image', indices_split/cur_idx)
-                #cv2.waitKey(0)
-                '''
-
                 cur_idx += 1
 
         self.indices_split = indices_split.reshape((height * width))
         self.plane_split = plane_split
-        #cv2.imshow('image', indices_split/88)
-        #cv2.waitKey(0)
-        # TODO visualize
-        #indices_split = indices_split.reshape((height * width, 1))
-        #index_map_all = np.zeros((height * width, 3), dtype=np.uint8)
-        #color_map = np.random.random_integers(0, 255, (cur_idx, 3))
-        #for i in range(0, cur_idx):
-        #    index_map = np.zeros((height * width, 3), dtype=np.uint8)
-        #    index_map[np.nonzero(indices_split == i), :] = color_map[i, :]
-        #    index_map_all[np.nonzero(indices_split == i), :] = color_map[i, :]
-        #    cv2.imwrite('split{:02d}.png'.format(int(str(i))), index_map_all.reshape((height, width, 3)))
-
-        #cv2.imwrite('split.png', index_map_all.reshape((height, width, 3)))
-        #cv2.imshow('image', index_map_all.reshape((height, width, 3)).astype(np.uint8))
-        #cv2.waitKey(0)
-        #print('why')
 
     def create_ptcloud_ground_grid(self):
         data = base_process.create_plane(n_point=80, sx=5, sy=8, ground_z=-2)

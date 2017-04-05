@@ -4,6 +4,7 @@ from glumpy import app, gloo, gl, glm
 from glumpy.ext import png
 #
 import base_process
+import scipy.misc
 
 
 class ProgramAxis():
@@ -112,6 +113,20 @@ class ProgramPlane:
             4, dtype=np.float32)
         self.lat, self.lon, self.yaw = 0, 0, 0
         self.face = face.view(gloo.IndexBuffer)
+
+
+class ProgramTexture:
+    def __init__(self, data=None, name='ProgramTexture', tri=None):
+        data = data.view(gloo.VertexBuffer)
+        tri = tri.view(gloo.IndexBuffer)
+
+        view_program = gloo.Program(vertexView, fragmentView)
+        view_program.bind(data)
+
+        self.name = name
+        self.program = view_program
+        self.draw_mode = gl.GL_TRIANGLES
+        self.tri = tri
 
 
 class ProgramSV3DRegion:
@@ -300,28 +315,29 @@ class ProgramSV3DTopology:
 
 
 class GpyViewWindow:
-    def __init__(self, data, tri):
-        window = app.Window(width=512, height=256,
+    def __init__(self, width=512, height=256):
+        window = app.Window(width=width, height=height,
                             color=(0.0, 0.0, 0.0, 1.00))
-
-        data = data.view(gloo.VertexBuffer)
-        tri = tri.view(gloo.IndexBuffer)
-
-        view_program = gloo.Program(vertexView, fragmentView)
-        view_program.bind(data)
-
+        self.programs = []
         framebuffer = np.zeros((window.height, window.width * 3), dtype=np.uint8)
         self.first = True # Why this need self?
-
         @window.event
         def on_draw(dt):
             window.clear()
-            view_program.draw(gl.GL_TRIANGLES, tri)
+            for program_object in self.programs:
+                program = program_object.program
+                if program_object.draw_mode == gl.GL_TRIANGLES:
+                    program.draw(program_object.draw_mode, program_object.tri)
             if self.first:
                 print('First')
                 gl.glReadPixels(0, 0, window.width, window.height,
                                 gl.GL_RGB, gl.GL_UNSIGNED_BYTE, framebuffer)
-                png.from_array(framebuffer, 'RGB').save('screenshot{}.png'.format(1))
+                my_texture = np.reshape(framebuffer, (window.height, window.width, 3))
+                # Some unknown reason
+                # The buffer didn't match what I see in the window
+                my_texture = np.flipud(my_texture)
+                scipy.misc.imsave('yolo.png', my_texture)
+                #png.from_array(my_texture, 'RGB').save('screenshot{}.png'.format(1))
                 self.first = False
 
         @window.event
@@ -332,16 +348,19 @@ class GpyViewWindow:
         def on_init():
             gl.glEnable(gl.GL_DEPTH_TEST)
 
+    def add_program(self, program):
+        self.programs.append(program)
+
     @staticmethod
     def run():
         app.run()
 
 
 class GpyWindow:
-    def __init__(self):
+    def __init__(self, window_width=1024, window_height=1024, degree=0):
         self.programs = []
 
-        window = app.Window(1024, 1024, color=(0, 0, 0, 1))
+        window = app.Window(window_width, window_height, color=(0, 0, 0, 1))
         framebuffer = np.zeros((window.height, window.width * 3), dtype=np.uint8)
 
         self.deg_x, self.deg_y, self.mov_x, self.mov_y, self.size, self.zoom, self.radius = 0, 0, 0, 0, 1, -200, 200
@@ -349,10 +368,10 @@ class GpyWindow:
             4, dtype=np.float32)
 
         u_view = np.eye(4, dtype=np.float32)
-        #glm.rotate(u_view, 180, 0, 1, 0)
+        glm.rotate(u_view, -90, 1, 0, 0)
         #glm.rotate(u_view, -70, 1, 0, 0)
-        #glm.rotate(u_view, -30, 0, 1, 0)
-        glm.translate(u_view, 0, 0, -125)
+        glm.rotate(u_view, degree + 270, 0, 1, 0)
+        glm.translate(u_view, 0, 0, 0) #(0, 0, -125)
 
         self.u_view = u_view
 
@@ -405,7 +424,7 @@ class GpyWindow:
         @window.event
         def on_resize(width, height):
             ratio = width / float(height)
-            self.u_projection = glm.perspective(75.0, ratio, 1, 10000.0)
+            self.u_projection = glm.perspective(52.0, ratio, 1, 10000.0)
 
         @window.event
         def on_init():
@@ -416,9 +435,9 @@ class GpyWindow:
             if self.size + dy * 0.1 < 0.1:
                 self.size = 0.1
             else:
-                self.size += dy * 0.1
+                # self.size += dy * 0.1
                 # self.zoom += dy*1
-                # self.program['u_view'] = glm.translation(0, 0, self.zoom)
+                self.u_view = glm.translate(self.u_view , 0, 0, dy)
 
         @window.event
         def on_mouse_drag(x, y, dx, dy, button):
@@ -482,13 +501,19 @@ class GpyWindow:
             elif symbol == 80:  # p --> print scrren
                 gl.glReadPixels(0, 0, window.width, window.height,
                                 gl.GL_RGB, gl.GL_UNSIGNED_BYTE, framebuffer)
-                png.from_array(framebuffer, 'RGB').save('screenshot{}.png'.format(self.scIdx))
+                #png.from_array(framebuffer, 'RGB').save('screenshot{}.png'.format(self.scIdx))
+                my_texture = np.reshape(framebuffer, (window.height, window.width, 3))
+                # Some unknown reason
+                # The buffer didn't match what I see in the window
+                my_texture = np.flipud(my_texture)
+                scipy.misc.imsave('yolo.png', my_texture)
+
                 self.scIdx += 1
 
         def matrix_model(model):
             glm.scale(model, self.size, self.size, self.size)
             glm.rotate(model, self.deg_y, 1, 0, 0)
-            glm.rotate(model, self.deg_x, 0, 1, 0)
+            glm.rotate(model, self.deg_x, 0, 0, 1)
             glm.translate(model, self.mov_x, -self.mov_y, 0)
             # model[3,3] = 1
             return model
@@ -762,7 +787,7 @@ varying vec3   v_color;         // Interpolated fragment color (out)
 void main()
 {
     v_color = a_color;
-    gl_Position = vec4(a_position,1.0);
+    gl_Position = vec4(a_position, 1.0);
 }
 """
 
