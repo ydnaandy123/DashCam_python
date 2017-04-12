@@ -270,7 +270,7 @@ class StreetView3D:
                 gnd_indices[np.nonzero(plane_indices == i)] = True
 
             depth = p_depth / v.dot(np.array((plane['nx'], plane['ny'], plane['nz'])))
-            depth = np.ones((height * width)) * -10
+            #depth = np.ones((height * width)) * -10
             depth_map[np.nonzero(plane_indices == i)] = depth[np.nonzero(plane_indices == i)]
 
         panorama = scipy.misc.imresize(self.panorama, (height, width), interp='bilinear', mode=None)

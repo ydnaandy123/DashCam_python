@@ -36,4 +36,5 @@ A project about dashcam implemented by Python
   - adjust different pano relative position
 
 ## Work record
+- new_system 0~8: [pipeline](src/pipeline.pptx)
 - novel_vew 9~11: [street_overview](src/pipeline.pptx)

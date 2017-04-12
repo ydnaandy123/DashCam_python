@@ -368,6 +368,175 @@ class GpyWindow:
             4, dtype=np.float32)
 
         u_view = np.eye(4, dtype=np.float32)
+        #glm.rotate(u_view, -90, 1, 0, 0)
+        #glm.rotate(u_view, -70, 1, 0, 0)
+        #glm.rotate(u_view, degree + 270, 0, 1, 0)
+        glm.translate(u_view, 0, 0, -125) #(0, 0, -125)
+
+        self.u_view = u_view
+
+        self.demo_dt = 0
+        self.scIdx = 0
+        @window.event
+        def on_draw(dt):
+            window.clear()
+            demo_idx = 0
+            for program_object in self.programs:
+                program = program_object.program
+
+                model = matrix_model(np.copy(program_object.u_model))
+                #self.deg_x += dt*20
+                #self.deg_y += dt*40
+                self.demo_dt += dt/5
+
+                demo_idx += 1
+                '''
+                if self.demo_dt > 2:
+                    if demo_idx == 1:
+                        if self.demo_dt > 2.4:
+                            if program['alpha'] <= 0.1:
+                                continue
+                            else:
+                                program['alpha'] -= 0.01
+                    elif demo_idx == 2:
+                        if self.demo_dt > 2.8:
+                            program['alpha'] += 0.01
+                '''
+
+
+
+                program['u_model'] = np.dot(model, self.u_model)
+
+                program['u_view'] = self.u_view
+                program['u_projection'] = self.u_projection
+                if program_object.draw_mode == gl.GL_TRIANGLES:
+                    program.draw(program_object.draw_mode, program_object.face)
+                elif program_object.draw_mode == gl.GL_LINES and program_object.name == 'ProgramSFM3DRegion':
+                    gl.glDisable(gl.GL_POLYGON_OFFSET_FILL)
+                    gl.glEnable(gl.GL_BLEND)
+                    gl.glDepthMask(gl.GL_FALSE)
+                    program.draw(program_object.draw_mode, program_object.O)
+                    gl.glDepthMask(gl.GL_TRUE)
+                else:
+                    program.draw(program_object.draw_mode)
+
+
+        @window.event
+        def on_resize(width, height):
+            ratio = width / float(height)
+            self.u_projection = glm.perspective(64.0, ratio, 1, 10000.0)
+
+        @window.event
+        def on_init():
+            gl.glEnable(gl.GL_DEPTH_TEST)
+
+        @window.event
+        def on_mouse_scroll(x, y, dx, dy):
+            if self.size + dy * 0.1 < 0.1:
+                self.size = 0.1
+            else:
+                 self.size += dy * 0.1
+                # self.zoom += dy*1
+                # self.u_view = glm.translate(self.u_view , 0, 0, dy)
+
+        @window.event
+        def on_mouse_drag(x, y, dx, dy, button):
+            if button == 2:
+                self.deg_y += dy  # degrees
+                self.deg_x += dx  # degrees
+            elif button == 8:
+                self.mov_y += dy/10  # degrees
+                self.mov_x += dx/10  # degrees
+
+        @window.event
+        def on_key_press(symbol, modifiers):
+            """
+
+            :param symbol:
+            :param modifiers:
+            :return:
+            """
+            '''
+            if symbol == 88:  # x
+                self.view_orth_vector = np.array([self.radius, 0, 0])
+                self.program['u_view'] = glm.translation(self.view_orth_vector[0], self.view_orth_vector[1],
+                                                         self.view_orth_vector[2])
+            elif symbol == 89:  # y
+                self.view_orth_vector = np.array([0, self.radius, 0])
+                self.program['u_view'] = glm.translation(self.view_orth_vector[0], self.view_orth_vector[1],
+                                                         self.view_orth_vector[2])
+            elif symbol == 90:  # z
+                self.view_orth_vector = np.array([0, 0, self.radius])
+                self.program['u_view'] = glm.translation(self.view_orth_vector[0], self.view_orth_vector[1],
+                                                         self.view_orth_vector[2])
+            elif symbol == 70:  # f
+                self.view_orth_vector = -self.view_orth_vector
+                self.program['u_view'] = glm.translation(self.view_orth_vector[0], self.view_orth_vector[1],
+                                                         self.view_orth_vector[2])
+            elif symbol == 80:  # p
+                gl.glReadPixels(0, 0, window.width, window.height,
+                                gl.GL_RGB, gl.GL_UNSIGNED_BYTE, framebuffer)
+                png.from_array(framebuffer, 'RGB').save('screenshot.png')
+
+            print('Key pressed (symbol=%s, modifiers=%s)' % (symbol, modifiers))
+            # self.program['color_sel'] = 1 - self.program['color_sel']
+            '''
+            #print(symbol)
+            if symbol == 67:  # c --> change color
+                for program_object in self.programs:
+                    if program_object.name == 'ProgramSFM3DRegion':
+                        program_object.program['color_sel'] = 1 - program_object.program['color_sel']
+            elif symbol == 65:  # a --> align sfm to google
+                for program_object in self.programs:
+                    if program_object.name == 'ProgramSFM3DRegion' or program_object.name == 'programTrajectory':
+                        program_object.align_flip()
+            elif symbol == 73:  # i --> inverse google according anchor
+                for program_object in self.programs:
+                    if program_object.name == 'ProgramSV3DRegion':
+                        program_object.apply_anchor_flip()
+            elif symbol == 89:  # y --> rotate google according anchor yaw
+                for program_object in self.programs:
+                    if program_object.name == 'ProgramSV3DRegion':
+                        program_object.apply_yaw_flip()
+            elif symbol == 80:  # p --> print scrren
+                gl.glReadPixels(0, 0, window.width, window.height,
+                                gl.GL_RGB, gl.GL_UNSIGNED_BYTE, framebuffer)
+                #png.from_array(framebuffer, 'RGB').save('screenshot{}.png'.format(self.scIdx))
+                my_texture = np.reshape(framebuffer, (window.height, window.width, 3))
+                # Some unknown reason
+                # The buffer didn't match what I see in the window
+                my_texture = np.flipud(my_texture)
+                scipy.misc.imsave('yolo.png', my_texture)
+
+                self.scIdx += 1
+
+        def matrix_model(model):
+            glm.scale(model, self.size, self.size, self.size)
+            glm.rotate(model, self.deg_y, 1, 0, 0)
+            glm.rotate(model, self.deg_x, 0, 1, 0)
+            glm.translate(model, self.mov_x, -self.mov_y, 0)
+            # model[3,3] = 1
+            return model
+
+    def add_program(self, program):
+        self.programs.append(program)
+
+    @staticmethod
+    def run():
+        app.run()
+
+class GpyWindowVR:
+    def __init__(self, window_width=1024, window_height=1024, degree=0):
+        self.programs = []
+
+        window = app.Window(window_width, window_height, color=(0, 0, 0, 1))
+        framebuffer = np.zeros((window.height, window.width * 3), dtype=np.uint8)
+
+        self.deg_x, self.deg_y, self.mov_x, self.mov_y, self.size, self.zoom, self.radius = 0, 0, 0, 0, 1, -200, 200
+        self.u_model, self.u_view, self.u_projection = np.eye(4, dtype=np.float32), np.eye(4, dtype=np.float32), np.eye(
+            4, dtype=np.float32)
+
+        u_view = np.eye(4, dtype=np.float32)
         glm.rotate(u_view, -90, 1, 0, 0)
         #glm.rotate(u_view, -70, 1, 0, 0)
         glm.rotate(u_view, degree + 270, 0, 1, 0)
@@ -424,7 +593,7 @@ class GpyWindow:
         @window.event
         def on_resize(width, height):
             ratio = width / float(height)
-            self.u_projection = glm.perspective(52.0, ratio, 1, 10000.0)
+            self.u_projection = glm.perspective(64.0, ratio, 1, 10000.0)
 
         @window.event
         def on_init():
@@ -524,7 +693,6 @@ class GpyWindow:
     @staticmethod
     def run():
         app.run()
-
 
 class Program:
     deg_x, deg_y, size, zoom, radius = 0, 0, 1, -200, 200

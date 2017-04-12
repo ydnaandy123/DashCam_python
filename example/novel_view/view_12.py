@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # ==============================================================
-# viewpoint systhesis single plane-base
+# viewpoint systhesis single plane-base VR
 # ==============================================================
 import numpy as np
 import sys
@@ -22,7 +22,7 @@ createSFM = False
 needAlign = True
 needMatchInfo3d = True
 needGround = True
-addPlane = False  # need open auto_plane in google_parse
+addPlane = True
 needVisual = True
 imageSynthesis = False
 needTexture = False
@@ -94,6 +94,8 @@ for fileIndex in range(sleIndex, sleIndex+1):
         # And if we want to know which panorama is the closet(not necessary)
         for i in range(0, pano_length):
             sv3D = sv3DRegion.sv3D_Time[i]
+            if addPlane:
+                sv3D.auto_plane()
             if i == 0:
                 data = sv3D.ptCLoudData[np.nonzero(sv3D.non_con)]
                 dataGnd = sv3D.ptCLoudData[np.nonzero(sv3D.gnd_con)]
@@ -184,10 +186,10 @@ for fileIndex in range(sleIndex, sleIndex+1):
 
         if needVisual:
             programSV3DRegion = glumpy_setting.ProgramSV3DRegion(
-                data=data, name='programSV3DRegion', point_size=10,
+                data=data, name='programSV3DRegion', point_size=1,
                 anchor_matrix=sv3DRegion.anchorMatrix, anchor_yaw=sv3DRegion.anchorYaw, is_inverse=needMatchInfo3d)
             programSV3DRegionGnd = glumpy_setting.ProgramSV3DRegion(
-                data=dataGnd, name='programSV3DRegionGnd', point_size=10,
+                data=dataGnd, name='programSV3DRegionGnd', point_size=1,
                 anchor_matrix=sv3DRegion.anchorMatrix, anchor_yaw=sv3DRegion.anchorYaw, is_inverse=needMatchInfo3d)
             programSV3DTopology = glumpy_setting.ProgramSV3DTopology(
                 data=sv3DRegion.topologyData, name='programSV3DTopology',
@@ -203,26 +205,26 @@ for fileIndex in range(sleIndex, sleIndex+1):
 For Visualize
 """
 if needVisual:
-    gpyWindow = glumpy_setting.GpyWindow()
-    if addPlane:
-        for j in range(0, pano_length):
-            sv3D = sv3DRegion.sv3D_Time[j]
-            for i in range(0, len(sv3D.gnd_plane)):
-                programGround = glumpy_setting.ProgramPlane(data=sv3D.gnd_plane[i]['data'], name='test',
-                                                            face=sv3D.gnd_plane[i]['tri'])
-                gpyWindow.add_program(programGround)
-
+    gpyWindow = glumpy_setting.GpyWindowVR(window_height=256, window_width=512)
     if createSFM:
         gpyWindow.add_program(programSFM3DRegion)
         gpyWindow.add_program(programTrajectory)
 
     if createSV:
-        gpyWindow.add_program(programSV3DRegion)
-        gpyWindow.add_program(programSV3DTopology)
-        if imageSynthesis:
-            gpyWindow.add_program(programSV3DNearest)
-        if needGround:
-            gpyWindow.add_program(programSV3DRegionGnd)
+        if addPlane:
+            for j in range(0, pano_length):
+                sv3D = sv3DRegion.sv3D_Time[j]
+                for i in range(0, len(sv3D.all_plane)):
+                    programGround = glumpy_setting.ProgramPlane(data=sv3D.all_plane[i]['data'], name='test',
+                                                                face=sv3D.all_plane[i]['tri'])
+                    gpyWindow.add_program(programGround)
+        else:
+            gpyWindow.add_program(programSV3DRegion)
+            gpyWindow.add_program(programSV3DTopology)
+            if imageSynthesis:
+                gpyWindow.add_program(programSV3DNearest)
+            if needGround:
+                gpyWindow.add_program(programSV3DRegionGnd)
 
     programAxis = glumpy_setting.ProgramAxis(line_length=5)
     gpyWindow.add_program(programAxis)

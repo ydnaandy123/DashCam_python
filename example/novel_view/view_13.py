@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # ==============================================================
-# viewpoint systhesis single plane-base
+# viewpoint systhesis single plane-base improved
 # ==============================================================
 import numpy as np
 import sys
@@ -22,9 +22,9 @@ createSFM = False
 needAlign = True
 needMatchInfo3d = True
 needGround = True
-addPlane = False  # need open auto_plane in google_parse
-needVisual = True
-imageSynthesis = False
+addPlane = False
+needVisual = False
+imageSynthesis = True
 needTexture = False
 mapType = '_trajectory'  # [_info3d, _trajectory]
 randomPos = [0, 0, 0]
@@ -63,7 +63,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
     sv3DRegion.init_region(anchor=anchor)
     if createSV:
         sv3DRegion.create_topoloy()
-        sv3DRegion.create_region_time(start=8, end=9)
+        sv3DRegion.create_region_time(start=9, end=10)
         # sv3DRegion.create_region()
         pano_length = len(sv3DRegion.panoramaList)
         anchor_inv = np.linalg.inv(sv3DRegion.anchorMatrix)
@@ -94,6 +94,8 @@ for fileIndex in range(sleIndex, sleIndex+1):
         # And if we want to know which panorama is the closet(not necessary)
         for i in range(0, pano_length):
             sv3D = sv3DRegion.sv3D_Time[i]
+            if addPlane:
+                sv3D.auto_plane()
             if i == 0:
                 data = sv3D.ptCLoudData[np.nonzero(sv3D.non_con)]
                 dataGnd = sv3D.ptCLoudData[np.nonzero(sv3D.gnd_con)]
@@ -122,18 +124,31 @@ for fileIndex in range(sleIndex, sleIndex+1):
                 data_all = sv3D.ptCLoudData
                 programTexture_set, rrr = [], []
                 # For each planes
-                for plane_idx in range(0, len(plane_split)):
+                for plane_idx in range(8, 9):
                     print('{:d}/{:d}'.format(plane_idx, len(plane_split)))
                     # Prepared for texture output
                     if needTexture:
                         # Reset for each plane
+                        phase1, phase2, phase3, phase4, crossPhase = False, False, False, False, False
                         texture_xyz_3d, texture_xyz, texture_color, texture_len = [], [], [], 0
+                        texture_xyz_3d_back_right, texture_xyz_back_right, texture_color_back_right, texture_len_back_right = [], [], [], 0
+                        texture_xyz_3d_back_left, texture_xyz_back_left, texture_color_back_left, texture_len_back_left = [], [], [], 0
+
                     sel = data_all[np.nonzero(indices_split == plane_idx)]
                     # For each point
                     for point in sel:
                         if np.isnan(point['a_position']).any():
                             continue
                         x, y, z = point['a_position'] - np.array(randomPos)
+                        if needTexture:
+                            if x < 0 and y < 0:
+                                phase3 = True
+                                if phase4:
+                                    crossPhase = True
+                            elif x >= 0 and y < 0:
+                                phase4 = True
+                                if phase3:
+                                    crossPhase = True
                         lng, lat = base_process.pos_2_deg(x, y, z)
 
                         lng = (lng + randomDeg) % 360
@@ -142,40 +157,77 @@ for fileIndex in range(sleIndex, sleIndex+1):
                         syn_pano[img_y, img_x, :] = point['a_color']
                         index_pano[img_y, img_x] = True
                         if needTexture:
-                            texture_xyz_3d.append([x, y, z])
-                            texture_xyz.append([img_x, img_y, 0])
-                            texture_color.append(point['a_color'])
-                            texture_len += 1
+                            if  x >= 0:
+                                texture_xyz_3d_back_right.append([x, y, z])
+                                texture_xyz_back_right.append([img_x, img_y, 0])
+                                texture_color_back_right.append(point['a_color'])
+                                texture_len_back_right += 1
+                            elif x < 0:
+                                texture_xyz_3d_back_left.append([x, y, z])
+                                texture_xyz_back_left.append([img_x, img_y, 0])
+                                texture_color_back_left.append(point['a_color'])
+                                texture_len_back_left += 1
 
-                    #indices_split_visual = np.zeros((256, 512))
-                    #indices_split_visual[np.nonzero(indices_split_reshape == plane_idx)] = 1
+                    indices_split_visual = np.zeros((256, 512))
+                    indices_split_visual[np.nonzero(indices_split_reshape == plane_idx)] = 1
                     #scipy.misc.imshow(indices_split_visual)
-                    #indices_split_visual = np.dstack((indices_split_visual, indices_split_visual, indices_split_visual))
-                    #texture_visual = np.hstack((ori_pano, indices_split_visual))
-                    #texture_visual_2 = np.hstack((ori_pano*indices_split_visual, syn_pano))
-                    #scipy.misc.imshow(np.vstack((texture_visual, texture_visual_2)))
+                    indices_split_visual = np.dstack((indices_split_visual, indices_split_visual, indices_split_visual))
+                    texture_visual = np.hstack((ori_pano, indices_split_visual))
+                    texture_visual_2 = np.hstack((ori_pano*indices_split_visual, syn_pano))
+                    scipy.misc.imshow(np.vstack((texture_visual, texture_visual_2)))
 
                     if needTexture:
-                        if len(texture_xyz_3d) < 3:
-                            rrr.append(plane_idx)
-                            continue
-                        texture_data = np.zeros((texture_len),
-                                                dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
-                        texture_data['a_color'] = np.array(texture_color)
-                        texture_data['a_position'] = np.array(texture_xyz)
+                        if crossPhase:
+                            if len(texture_xyz_3d_back_right) >= 3:
+                                texture_data = np.zeros((texture_len_back_right),
+                                                        dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+                                texture_data['a_color'] = np.array(texture_color_back_right)
+                                texture_data['a_position'] = np.array(texture_xyz_back_right)
 
-                        # pca = PCA(n_components=2)
-                        # data_transfer = pca.fit_transform(texture_data['a_position'])
-                        #data_transfer = texture_data['a_position'][:, 0:2]
-                        #texture_tri = np.array(triangle.delaunay(data_transfer), dtype=np.uint32)
-                        pca = PCA(n_components=2)
-                        data_transfer = pca.fit_transform(np.array(texture_xyz_3d))
-                        tri = np.array(triangle.delaunay(data_transfer), dtype=np.uint32)
-                        texture_data['a_position'][:, 0] = texture_data['a_position'][:, 0] / 256.0 - 1.0
-                        texture_data['a_position'][:, 1] = -(texture_data['a_position'][:, 1] / 128.0 - 1.0)
+                                pca = PCA(n_components=2)
+                                data_transfer = pca.fit_transform(np.array(texture_xyz_3d_back_right))
+                                tri = np.array(triangle.delaunay(data_transfer), dtype=np.uint32)
+                                texture_data['a_position'][:, 0] = texture_data['a_position'][:, 0] / 256.0 - 1.0
+                                texture_data['a_position'][:, 1] = -(texture_data['a_position'][:, 1] / 128.0 - 1.0)
 
-                        programTexture = glumpy_setting.ProgramTexture(data=texture_data, name='ProgramTexture', tri=tri)
-                        programTexture_set.append(programTexture)
+                                programTexture = glumpy_setting.ProgramTexture(data=texture_data, name='ProgramTexture', tri=tri)
+                                programTexture_set.append(programTexture)
+
+                            if len(texture_xyz_3d_back_left) >= 3:
+                                texture_data = np.zeros((texture_len_back_left),
+                                                        dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+                                texture_data['a_color'] = np.array(texture_color_back_left)
+                                texture_data['a_position'] = np.array(texture_xyz_back_left)
+
+                                pca = PCA(n_components=2)
+                                data_transfer = pca.fit_transform(np.array(texture_xyz_3d_back_left))
+                                tri = np.array(triangle.delaunay(data_transfer), dtype=np.uint32)
+                                texture_data['a_position'][:, 0] = texture_data['a_position'][:, 0] / 256.0 - 1.0
+                                texture_data['a_position'][:, 1] = -(texture_data['a_position'][:, 1] / 128.0 - 1.0)
+
+                                programTexture = glumpy_setting.ProgramTexture(data=texture_data, name='ProgramTexture', tri=tri)
+                                programTexture_set.append(programTexture)
+                        else:
+                            texture_xyz_3d = texture_xyz_3d_back_right + texture_xyz_3d_back_left
+                            texture_xyz = texture_xyz_back_right + texture_xyz_back_left
+                            texture_color = texture_color_back_right + texture_color_back_left
+                            texture_len = texture_len_back_right + texture_len_back_left
+                            if len(texture_xyz_3d) >= 3:
+                                texture_data = np.zeros((texture_len),
+                                                        dtype=[('a_position', np.float32, 3), ('a_color', np.float32, 3)])
+                                texture_data['a_color'] = np.array(texture_color)
+                                texture_data['a_position'] = np.array(texture_xyz)
+
+                                pca = PCA(n_components=2)
+                                data_transfer = pca.fit_transform(np.array(texture_xyz_3d))
+                                tri = np.array(triangle.delaunay(data_transfer), dtype=np.uint32)
+                                texture_data['a_position'][:, 0] = texture_data['a_position'][:, 0] / 256.0 - 1.0
+                                texture_data['a_position'][:, 1] = -(texture_data['a_position'][:, 1] / 128.0 - 1.0)
+
+                                programTexture = glumpy_setting.ProgramTexture(data=texture_data, name='ProgramTexture', tri=tri)
+                                programTexture_set.append(programTexture)
+
+
                     #break
                 print(rrr)
                 #scipy.misc.imshow(syn_pano)
@@ -184,10 +236,10 @@ for fileIndex in range(sleIndex, sleIndex+1):
 
         if needVisual:
             programSV3DRegion = glumpy_setting.ProgramSV3DRegion(
-                data=data, name='programSV3DRegion', point_size=10,
+                data=data, name='programSV3DRegion', point_size=1,
                 anchor_matrix=sv3DRegion.anchorMatrix, anchor_yaw=sv3DRegion.anchorYaw, is_inverse=needMatchInfo3d)
             programSV3DRegionGnd = glumpy_setting.ProgramSV3DRegion(
-                data=dataGnd, name='programSV3DRegionGnd', point_size=10,
+                data=dataGnd, name='programSV3DRegionGnd', point_size=1,
                 anchor_matrix=sv3DRegion.anchorMatrix, anchor_yaw=sv3DRegion.anchorYaw, is_inverse=needMatchInfo3d)
             programSV3DTopology = glumpy_setting.ProgramSV3DTopology(
                 data=sv3DRegion.topologyData, name='programSV3DTopology',
@@ -204,25 +256,25 @@ For Visualize
 """
 if needVisual:
     gpyWindow = glumpy_setting.GpyWindow()
-    if addPlane:
-        for j in range(0, pano_length):
-            sv3D = sv3DRegion.sv3D_Time[j]
-            for i in range(0, len(sv3D.gnd_plane)):
-                programGround = glumpy_setting.ProgramPlane(data=sv3D.gnd_plane[i]['data'], name='test',
-                                                            face=sv3D.gnd_plane[i]['tri'])
-                gpyWindow.add_program(programGround)
-
     if createSFM:
         gpyWindow.add_program(programSFM3DRegion)
         gpyWindow.add_program(programTrajectory)
 
     if createSV:
-        gpyWindow.add_program(programSV3DRegion)
-        gpyWindow.add_program(programSV3DTopology)
-        if imageSynthesis:
-            gpyWindow.add_program(programSV3DNearest)
-        if needGround:
-            gpyWindow.add_program(programSV3DRegionGnd)
+        if addPlane:
+            for j in range(0, pano_length):
+                sv3D = sv3DRegion.sv3D_Time[j]
+                for i in range(0, len(sv3D.all_plane)):
+                    programGround = glumpy_setting.ProgramPlane(data=sv3D.all_plane[i]['data'], name='test',
+                                                                face=sv3D.all_plane[i]['tri'])
+                    gpyWindow.add_program(programGround)
+        else:
+            gpyWindow.add_program(programSV3DRegion)
+            gpyWindow.add_program(programSV3DTopology)
+            if imageSynthesis:
+                gpyWindow.add_program(programSV3DNearest)
+            if needGround:
+                gpyWindow.add_program(programSV3DRegionGnd)
 
     programAxis = glumpy_setting.ProgramAxis(line_length=5)
     gpyWindow.add_program(programAxis)
