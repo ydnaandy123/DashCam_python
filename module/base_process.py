@@ -153,3 +153,73 @@ def bounding_box(points):
     a[0, :] = np.min(points, axis=0)
     a[1, :] = np.max(points, axis=0)
     return a
+
+
+def pano2erspective(panorama, randomDeg=0):
+    ori_pano = panorama / 255.0
+    pano_height, pano_width = ori_pano.shape[0], ori_pano.shape[1]  # Actually, this must be 1:2
+    perspective_height, perspective_width = int(pano_height / 2), int(pano_width / 2)
+    perspective_90_set = []
+    # randomDeg = - sv3D.yaw
+    for degree in range(0, 360, 90):
+        perspective_90 = np.zeros((perspective_height, perspective_width, 3))
+        for p_y in range(0, perspective_height):
+            for p_x in range(0, perspective_width):
+                x = p_x - perspective_width / 2
+                z = -p_y + perspective_height / 2
+                y = perspective_height
+                lng, lat = pos_2_deg(x, y, z)
+
+                lng = (lng + degree + randomDeg) % 360
+                img_x = lng / 360.0 * pano_width
+                img_y = -(lat - 90) / 180.0 * pano_height
+
+                img_pos0_x = np.floor(img_x)
+                img_pos0_y = np.floor(img_y)
+
+                img_pos_diff_x = img_x - img_pos0_x
+                img_pos_diff_y = img_y - img_pos0_y
+
+                img_pos1_x = img_pos0_x + 1
+                img_pos1_y = img_pos0_y
+
+                img_pos2_x = img_pos0_x
+                img_pos2_y = img_pos0_y + 1
+
+                img_pos3_x = img_pos0_x + 1
+                img_pos3_y = img_pos0_y + 1
+
+                if img_pos1_x == pano_width:
+                    img_pos1_x = pano_width - 1
+                if img_pos3_x == pano_width:
+                    img_pos3_x = pano_width - 1
+                if img_pos2_y == pano_height:
+                    img_pos2_y = pano_height - 1
+                if img_pos3_y == pano_height:
+                    img_pos3_y = pano_height - 1
+
+                img_ratio0 = (1 - img_pos_diff_x) * (1 - img_pos_diff_y)
+                img_ratio1 = img_pos_diff_x * (1 - img_pos_diff_y)
+                img_ratio2 = (1 - img_pos_diff_x) * img_pos_diff_y
+                img_ratio3 = img_pos_diff_x * img_pos_diff_y
+
+                img_color0 = ori_pano[img_pos0_y, img_pos0_x, :]
+                img_color1 = ori_pano[img_pos1_y, img_pos1_x, :]
+                img_color2 = ori_pano[img_pos2_y, img_pos2_x, :]
+                img_color3 = ori_pano[img_pos3_y, img_pos3_x, :]
+
+                img_color = img_ratio0 * img_color0 + img_ratio1 * img_color1 + \
+                            img_ratio2 * img_color2 + img_ratio3 * img_color3
+
+                perspective_90[p_y, p_x, :] = img_color
+
+        #scipy.misc.imsave(str(degree) + '.png', perspective_90)
+        # scipy.misc.imshow(perspective_90)
+        perspective_90_set.append(perspective_90)
+        # break
+
+        # perspective_90_visual_0 = np.hstack(
+        #    (perspective_90_set[3], perspective_90_set[0], perspective_90_set[1], perspective_90_set[2]))
+        # perspective_90_visual = np.vstack((ori_pano, perspective_90_visual_0))
+        # scipy.misc.imshow(perspective_90_visual)
+    return perspective_90_set

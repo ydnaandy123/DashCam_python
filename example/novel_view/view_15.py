@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # ==============================================================
-# viewpoint systhesis single plane-base improved
+# viewpoint systhesis
 # ==============================================================
 import numpy as np
 import sys
@@ -18,14 +18,14 @@ import base_process
 
 sleIndex = 3
 createSV = True
-createSFM = False
+createSFM = True
 needAlign = True
 needMatchInfo3d = True
-needGround = False
+needGround = True
 addPlane = False
 needVisual = True
-imageSynthesis = True
-needTexture = True
+imageSynthesis = False
+needTexture = False
 mapType = '_trajectory'  # [_info3d, _trajectory]
 randomPos = [-5, -5, 0]
 randomDeg = 0
@@ -63,7 +63,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
     sv3DRegion.init_region(anchor=anchor)
     if createSV:
         sv3DRegion.create_topoloy()
-        sv3DRegion.create_region_time(start=7, end=8)
+        sv3DRegion.create_region_time(start=6, end=12)
         # sv3DRegion.create_region()
         pano_length = len(sv3DRegion.panoramaList)
         anchor_inv = np.linalg.inv(sv3DRegion.anchorMatrix)
@@ -237,10 +237,10 @@ for fileIndex in range(sleIndex, sleIndex+1):
 
         if needVisual:
             programSV3DRegion = glumpy_setting.ProgramSV3DRegion(
-                data=data, name='programSV3DRegion', point_size=1,
+                data=data, name='ProgramSV3DRegion', point_size=1,
                 anchor_matrix=sv3DRegion.anchorMatrix, anchor_yaw=sv3DRegion.anchorYaw, is_inverse=needMatchInfo3d)
             programSV3DRegionGnd = glumpy_setting.ProgramSV3DRegion(
-                data=dataGnd, name='programSV3DRegionGnd', point_size=1,
+                data=dataGnd, name='ProgramSV3DRegionGnd', point_size=1,
                 anchor_matrix=sv3DRegion.anchorMatrix, anchor_yaw=sv3DRegion.anchorYaw, is_inverse=needMatchInfo3d)
             programSV3DTopology = glumpy_setting.ProgramSV3DTopology(
                 data=sv3DRegion.topologyData, name='programSV3DTopology',
@@ -273,9 +273,11 @@ if needVisual:
             gpyWindow.add_program(programSV3DRegion)
             gpyWindow.add_program(programSV3DTopology)
             if imageSynthesis:
-                gpyWindow.add_program(programSV3DNearest)
+                pass
+                #gpyWindow.add_program(programSV3DNearest)
             if needGround:
-                gpyWindow.add_program(programSV3DRegionGnd)
+                pass
+                #gpyWindow.add_program(programSV3DRegionGnd)
 
     programAxis = glumpy_setting.ProgramAxis(line_length=5)
     gpyWindow.add_program(programAxis)

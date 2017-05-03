@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # ==============================================================
-# viewpoint systhesis single plane-base improved
+# viewpoint systhesis (demo for perspective view)
 # ==============================================================
 import numpy as np
 import sys
@@ -63,7 +63,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
     sv3DRegion.init_region(anchor=anchor)
     if createSV:
         sv3DRegion.create_topoloy()
-        sv3DRegion.create_region_time(start=7, end=8)
+        sv3DRegion.create_region_time(start=6, end=12)
         # sv3DRegion.create_region()
         pano_length = len(sv3DRegion.panoramaList)
         anchor_inv = np.linalg.inv(sv3DRegion.anchorMatrix)
@@ -89,6 +89,70 @@ for fileIndex in range(sleIndex, sleIndex+1):
                 if i == (pano_length-1):
                     nearest_pano_idx = np.argmin(dis_len_set)
         # Gather the pointcloud data (may be aligned or not)
+                    # Find matched feature point
+        match_pair_all = []
+        for i in range(0, pano_length - 1):
+            print('[{:d}-{:d}]/{:d}'.format(i, i + 1, len(sv3DRegion.panoramaList) - 1))
+            panorama_a = sv3DRegion.panoramaList[i]  # queryImage
+            panorama_b = sv3DRegion.panoramaList[i + 1]  # trainImage
+            #perspective_90_set = base_process.pano2erspective(panorama_a, -sv3DRegion.sv3D_Time[i].yaw)
+            perspective_90_set = base_process.pano2erspective(panorama_a, 0)
+
+            scipy.misc.imsave('{:d}_0.png'.format(i), perspective_90_set[0])
+            scipy.misc.imsave('{:d}_1.png'.format(i), perspective_90_set[1])
+            scipy.misc.imsave('{:d}_2.png'.format(i), perspective_90_set[2])
+            scipy.misc.imsave('{:d}_3.png'.format(i), perspective_90_set[3])
+            '''
+            sv3D_a = sv3DRegion.sv3D_Time[i].ptCLoudData['a_position']
+            sv3D_b = sv3DRegion.sv3D_Time[i + 1].ptCLoudData['a_position']
+            # panorama_a = cv2.resize(panorama_a, (512, 256))
+            # panorama_b = cv2.resize(panorama_b, (512, 256))
+
+            # Initiate SIFT detector [SIFT, SURF, ORB]
+            orb = cv2.ORB_create()
+
+            # find the keypoints and descriptors with SIFT
+            kp1, des1 = orb.detectAndCompute(panorama_a, None)
+            kp2, des2 = orb.detectAndCompute(panorama_b, None)
+
+            matcher = cv2.BFMatcher()
+
+            matches = matcher.match(des1, des2)
+            matches = sorted(matches, key=lambda x: x.distance)
+
+            match_pair = []
+            RANSACResult = []
+            matchX1, matchX2 = [], []
+            for mat in matches:
+                img1_idx = mat.queryIdx
+                img2_idx = mat.trainIdx
+                (x1, y1) = kp1[img1_idx].pt
+                (x2, y2) = kp2[img2_idx].pt
+                x1 = int(x1 * 512. / 832.)
+                y1 = int(y1 * 256. / 416.)
+                x2 = int(x2 * 512. / 832.)
+                y2 = int(y2 * 256. / 416.)
+                xyz1, xyz2 = sv3D_a[y1 * 512 + x1], sv3D_b[y2 * 512 + x2]
+                if np.isnan(xyz1).any() or np.isnan(xyz2).any():
+                    continue
+                matchX1.append(xyz1)
+                matchX2.append(xyz2)
+                if np.linalg.norm(xyz1 - xyz2) > 1:
+                    continue
+                match_pair.append(xyz2 - xyz1)
+                # end_img = drawMatches(panorama_a, kp1, panorama_b, kp2, [mat])
+                # scipy.misc.imshow(end_img)
+            if len(match_pair) == 0:
+                match_pair_all.append([0, 0, 0])
+            if len(matchX1) == 0:
+                RANSACResult.append([0, 0, 0])
+            else:
+                match_pair_all.append(np.mean(match_pair, axis=0))
+                model_ransac = linear_model.RANSACRegressor(linear_model.LinearRegression())
+                model_ransac.fit(np.array(matchX1), np.array(matchX2))
+                inlier_mask = model_ransac.inlier_mask_
+                RANSACResult.append(model_ransac.estimator_.coef_)
+            '''
         # Why separate in two loops?
         # Because there once existed a process about alignment here
         # And if we want to know which panorama is the closet(not necessary)

@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # ==============================================================
-# viewpoint systhesis single plane-base improved
+# viewpoint systhesis
 # ==============================================================
 import numpy as np
 import sys
@@ -63,7 +63,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
     sv3DRegion.init_region(anchor=anchor)
     if createSV:
         sv3DRegion.create_topoloy()
-        sv3DRegion.create_region_time(start=7, end=8)
+        sv3DRegion.create_region_time(start=6, end=11)
         # sv3DRegion.create_region()
         pano_length = len(sv3DRegion.panoramaList)
         anchor_inv = np.linalg.inv(sv3DRegion.anchorMatrix)
@@ -237,10 +237,10 @@ for fileIndex in range(sleIndex, sleIndex+1):
 
         if needVisual:
             programSV3DRegion = glumpy_setting.ProgramSV3DRegion(
-                data=data, name='programSV3DRegion', point_size=1,
+                data=data, name='ProgramSV3DRegion', point_size=1,
                 anchor_matrix=sv3DRegion.anchorMatrix, anchor_yaw=sv3DRegion.anchorYaw, is_inverse=needMatchInfo3d)
             programSV3DRegionGnd = glumpy_setting.ProgramSV3DRegion(
-                data=dataGnd, name='programSV3DRegionGnd', point_size=1,
+                data=dataGnd, name='ProgramSV3DRegionGnd', point_size=1,
                 anchor_matrix=sv3DRegion.anchorMatrix, anchor_yaw=sv3DRegion.anchorYaw, is_inverse=needMatchInfo3d)
             programSV3DTopology = glumpy_setting.ProgramSV3DTopology(
                 data=sv3DRegion.topologyData, name='programSV3DTopology',

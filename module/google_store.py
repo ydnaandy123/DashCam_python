@@ -6,7 +6,9 @@ from urllib.request import urlopen
 import urllib.request
 from lxml import etree
 import lxml
-
+from PIL import Image
+from io import BytesIO
+import requests
 import json
 import os
 
@@ -263,6 +265,72 @@ class PanoramaMetadata:
             print(self.PanoId + 'has some problem.')
 
 
+class PanoramaMetadata_python3:
+    def __init__(self, root):
+        try:
+            #self.PanoDoc = panodoc
+            #panoDocCtx = self.PanoDoc.xpathNewContext()
+
+            #self.PanoId = panoDocCtx.xpathEval("/panorama/data_properties/@pano_id")[0].content
+            self.PanoId = root.find('data_properties').get('pano_id')
+
+            # self.ImageWidth = panoDocCtx.xpathEval("/panorama/data_properties/@image_width")[0].content
+            # self.ImageHeight = panoDocCtx.xpathEval("/panorama/data_properties/@image_height")[0].content
+            # self.TileWidth = panoDocCtx.xpathEval("/panorama/data_properties/@tile_width")[0].content
+            # self.TileHeight = panoDocCtx.xpathEval("/panorama/data_properties/@tile_height")[0].content
+            # self.NumZoomLevels = panoDocCtx.xpathEval("/panorama/data_properties/@num_zoom_levels")[0].content
+            #self.Lat = panoDocCtx.xpathEval("/panorama/data_properties/@lat")[0].content
+            #self.Lon = panoDocCtx.xpathEval("/panorama/data_properties/@lng")[0].content
+            self.Lat = root.find('data_properties').get('lat')
+            self.Lon = root.find('data_properties').get('lng')
+            # self.OriginalLat = panoDocCtx.xpathEval("/panorama/data_properties/@original_lat")[0].content
+            # self.OriginalLon = panoDocCtx.xpathEval("/panorama/data_properties/@original_lng")[0].content
+            # self.Copyright = panoDocCtx.xpathEval("/panorama/data_properties/copyright/text()")[0].content
+            # some panorama hasn't the files follow
+            # which will cause error
+            try:
+                #self.Text = panoDocCtx.xpathEval("/panorama/data_properties/text/text()")[0].content
+                self.Text = root.find('data_properties').find('text').text
+            except:
+                self.Text = ''
+            # self.Region = panoDocCtx.xpathEval("/panorama/data_properties/region/text()")[0].content
+            # self.Country = panoDocCtx.xpathEval("/panorama/data_properties/country/text()")[0].content
+
+            # self.ProjectionType = panoDocCtx.xpathEval("/panorama/projection_properties/@projection_type")[0].content
+            #self.ProjectionPanoYawDeg = panoDocCtx.xpathEval("/panorama/projection_properties/@pano_yaw_deg")[0].content
+            self.ProjectionPanoYawDeg = root.find('projection_properties').get('pano_yaw_deg')
+            # self.ProjectionTiltYawDeg = panoDocCtx.xpathEval("/panorama/projection_properties/@tilt_yaw_deg")[0].content
+            # self.ProjectionTiltPitchDeg = panoDocCtx.xpathEval("/panorama/projection_properties/@tilt_pitch_deg")[0].content
+
+            self.AnnotationLinks = []
+            for cur in root.find('annotation_properties').iterfind('link'):
+                self.AnnotationLinks.append({'YawDeg': cur.get('yaw_deg'),
+                                             'PanoId': cur.get('pano_id'),
+                                             'RoadARGB': cur.get('road_argb')
+                                             # ,'Text': text
+                                             # some panorama hasn't this file
+                                             # which will cause error
+                                             # text = cur.xpathEval("link_text/text()")[0].content
+                                             })
+            '''
+            for cur in panoDocCtx.xpathEval("/panorama/annotation_properties/link"):
+                self.AnnotationLinks.append({'YawDeg': cur.xpathEval("@yaw_deg")[0].content,
+                                             'PanoId': cur.xpathEval("@pano_id")[0].content,
+                                             'RoadARGB': cur.xpathEval("@road_argb")[0].content
+                                             # ,'Text': text
+                                             # some panorama hasn't this file
+                                             # which will cause error
+                                             # text = cur.xpathEval("link_text/text()")[0].content
+                                             })
+            '''
+
+            tmp = root.find('model').find('depth_map').text
+            self.rawDepth = root.find('model').find('depth_map').text
+
+        except:
+            print(self.PanoId + 'has some problem.')
+
+
 def get_url_contents(url):
     f = urlopen(url)
     data = f.read()
@@ -287,15 +355,13 @@ def get_panorama_metadata(panoid=None, lat=None, lon=None, radius=30):
         url += '&panoid=%s'  # panoid to retrieve
         url = url % (base_uri, panoid)
 
-    str_url = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=26693255&retmode=text&rettype=xml'
-    request = urllib.request.Request(str_url)
+    request = urllib.request.Request(url)
     xml_text = urllib.request.urlopen(request).read()
     root = lxml.etree.XML(xml_text)
-    journal_name = root.find('PubmedArticle').find('MedlineCitation').find('Article').find('Journal').find('Title').text
     # TODO http://cangfengzhe.github.io/python/python-lxml.html
     # TODO http://python3-cookbook.readthedocs.io/zh_CN/latest/c06/p03_parse_simple_xml_data.html
     # TODO https://docs.python.org/2/library/xml.etree.elementtree.html
-    return PanoramaMetadata(result)
+    return PanoramaMetadata_python3(root)
 
 
 # h_base, w_base should be renamed...
@@ -336,8 +402,15 @@ def get_panorama_tile(panoid, zoom, x, y):
 def url_to_image(url):
     # download the image, convert it to a NumPy array, and then read
     # it into OpenCV format
-    resp = urllib.urlopen(url)
-    image = np.asarray(bytearray(resp.read()), dtype="uint8")
+    resp = urllib.request.Request(url)
+    xml_text = urllib.request.urlopen(resp).read()
+    image = np.asarray(bytearray(xml_text), dtype="uint8")
     image = cv2.imdecode(image, cv2.IMREAD_COLOR)
     # return the image
     return image
+
+def url_to_image_python3(url):
+    response = requests.get(url)
+    img = Image.open(BytesIO(response.content))
+    # return the image
+    return img

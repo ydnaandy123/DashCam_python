@@ -6,7 +6,7 @@ import sys
 
 sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')  # use the module under 'module'
 import google_store
-#import google_parse
+import google_parse
 
 
 # Create PanoFetcher

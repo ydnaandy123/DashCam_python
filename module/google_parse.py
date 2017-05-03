@@ -121,6 +121,7 @@ class StreetView3DRegion:
                 pano_id_dir = os.path.join(self.dataDir, panoId)
                 panorama = scipy.misc.imread(pano_id_dir + '.jpg').astype(np.float)
                 self.panoramaList.append(cv2.imread(pano_id_dir + '.jpg', 0))
+                #self.panoramaList.append(scipy.misc.imread(pano_id_dir + '.jpg').astype(np.float32))
                 with open(pano_id_dir + '.json') as data_file:
                     pano_meta = json.load(data_file)
                     sv3d = StreetView3D(pano_meta, panorama)
@@ -354,7 +355,7 @@ class StreetView3D:
             index_map = np.zeros((height, width), dtype=np.float32)
             index_map[np.nonzero(indices == i)] = 1
             plane = self.depthMapPlanes[i]
-            all_labels = skimage.measure.label(index_map, background=0)
+            all_labels = skimage.measure.label(index_map, background=0, connectivity=1)
             for l in range(1, all_labels.max()+1):
                 label_map = np.zeros((height, width), dtype=np.float32)
                 label_map[np.nonzero(all_labels == l)] = 1
