@@ -501,12 +501,12 @@ class GpyWindow:
             elif symbol == 80:  # p --> print scrren
                 gl.glReadPixels(0, 0, window.width, window.height,
                                 gl.GL_RGB, gl.GL_UNSIGNED_BYTE, framebuffer)
-                #png.from_array(framebuffer, 'RGB').save('screenshot{}.png'.format(self.scIdx))
-                my_texture = np.reshape(framebuffer, (window.height, window.width, 3))
+                png.from_array(framebuffer, 'RGB').save('screenshot{}.png'.format(self.scIdx))
+                #my_texture = np.reshape(framebuffer, (window.height, window.width, 3))
                 # Some unknown reason
                 # The buffer didn't match what I see in the window
-                my_texture = np.flipud(my_texture)
-                scipy.misc.imsave('yolo.png', my_texture)
+                #my_texture = np.flipud(my_texture)
+                #scipy.misc.imsave('yolo.png', my_texture)
 
                 self.scIdx += 1
 

@@ -44,7 +44,7 @@ needVisual = True
 addPlane = False
 needGround = True
 
-if False:
+if True:
     #pano_length = len(sv3DRegion.panoramaList)
     pano_length = len(sv3DRegion.sv3D_Dict)
     anchor_inv = np.linalg.inv(sv3DRegion.anchorMatrix)

@@ -1,12 +1,13 @@
 #!/usr/bin/python3
 # ==============================================================
-# viewpoint systhesis
+# viewpoint systhesis with planeJoints
 # ==============================================================
 import numpy as np
 import sys
 import scipy.misc
 from sklearn.decomposition import PCA
 import triangle
+import scipy.ndimage
 
 sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')  # use the module under 'module'
 import file_process
@@ -23,6 +24,7 @@ needAlign = True
 needMatchInfo3d = True
 needGround = False
 addPlane = False
+planeJoints = False
 needVisual = True
 imageSynthesis = True
 needTexture = True
@@ -63,7 +65,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
     sv3DRegion.init_region(anchor=anchor)
     if createSV:
         sv3DRegion.create_topoloy()
-        sv3DRegion.create_region_time(start=6, end=11)
+        sv3DRegion.create_region_time(start=8, end=9)
         # sv3DRegion.create_region()
         pano_length = len(sv3DRegion.panoramaList)
         anchor_inv = np.linalg.inv(sv3DRegion.anchorMatrix)
@@ -135,7 +137,14 @@ for fileIndex in range(sleIndex, sleIndex+1):
                         texture_xyz_3d_back_right, texture_xyz_back_right, texture_color_back_right, texture_len_back_right = [], [], [], 0
                         texture_xyz_3d_back_left, texture_xyz_back_left, texture_color_back_left, texture_len_back_left = [], [], [], 0
 
-                    sel = data_all[np.nonzero(indices_split == plane_idx)]
+                    if planeJoints:
+                        aug_plane = np.zeros((256, 512))
+                        aug_plane[np.nonzero(indices_split_reshape == plane_idx)] = 1
+                        aug_plane = scipy.ndimage.morphology.binary_dilation(aug_plane, iterations=1)
+                        aug_plane = np.reshape(aug_plane, (256 * 512))
+                        sel = data_all[np.nonzero(aug_plane)]
+                    else:
+                        sel = data_all[np.nonzero(indices_split == plane_idx)]
                     # For each point
                     for point in sel:
                         if np.isnan(point['a_position']).any():
