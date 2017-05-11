@@ -27,7 +27,7 @@ needVisual = True
 imageSynthesis = True
 needTexture = True
 mapType = '_trajectory'  # [_info3d, _trajectory]
-randomPos = [-5, -5, 0]
+randomPos = [0, 0, 0]
 randomDeg = 0
 texture_height, texture_width = 256.0, 512.0
 

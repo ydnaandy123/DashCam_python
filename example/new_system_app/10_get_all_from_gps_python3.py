@@ -10,8 +10,8 @@ import google_parse
 
 
 # Create PanoFetcher
-zoom, radius = 2, 10
-fileID = 'NTHU'
+zoom, radius = 1, 10
+fileID = 'NTHUDEMO'
 """
 # 1. use BFS
 # parameter: fileId, gps, queryNum
@@ -30,7 +30,7 @@ if True:
     sv3DRegion.create_region()
     for key in sv3DRegion.sv3D_Dict:
         sv = sv3DRegion.sv3D_Dict[key]
-        #sv.visualize()
+        sv.visualize()
         break
 
 """
@@ -42,9 +42,9 @@ import glumpy_setting
 needMatchInfo3d = True
 needVisual = True
 addPlane = False
-needGround =False
+needGround = True
 
-if True:
+if False:
     #pano_length = len(sv3DRegion.panoramaList)
     pano_length = len(sv3DRegion.sv3D_Dict)
     anchor_inv = np.linalg.inv(sv3DRegion.anchorMatrix)
