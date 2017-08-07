@@ -1,7 +1,22 @@
 # DashCam_python
 A project about dashcam implemented by Python
+- [project page](http://ydnaandy123.github.io/DashCam_python/)
 - [paper on eccv'16 workshop](http://link.springer.com/chapter/10.1007/978-3-319-46604-0_10)
 - [intro video](https://www.youtube.com/watch?v=qeIMMk8E17o)
+
+## Reference
+- [Google Street View: Capturing the World at Street Level](https://research.google.com/pubs/pub36899.html)
+- [3D City Reconstruction From Google Street View](https://www.evl.uic.edu/entry.php?id=2179)
+- [Urban Jungle](http://inear.se/urbanjungle)
+- [Extract depth maps from Google Street View](https://0xef.wordpress.com/2013/05/01/extract-depth-maps-from-google-street-view/)
+- [HyperlapseMB: Hyperlapse.js with Motion Blur](https://0xef.wordpress.com/2013/05/01/hyperlapsemb-hyperlapse-js-with-motion-blur/)
+- [GSVPano](https://github.com/konforti/GSVPano)
+- [GSVPanoDepth](https://github.com/proog128/GSVPanoDepth.js/tree/master)
+- [Google uses World Geodetic System WGS84 standard](https://developers.google.com/maps/documentation/javascript/maptypes)
+- [ECEF](https://en.wikipedia.org/wiki/ECEF)
+- [WGS84](https://en.wikipedia.org/wiki/Geodetic_datum)
+- [coordinate transfer](http://w3.uch.edu.tw/ccchang50/crd_trsnafer.pdf)
+- [Google StreetViewPov POV heading](https://developers.google.com/maps/documentation/javascript/streetview#StreetViewLocation)
 
 ## Current pipeline
 1. Fetch the Google data (Use info_3d)

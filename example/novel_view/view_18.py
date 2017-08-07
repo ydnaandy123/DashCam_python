@@ -1,14 +1,14 @@
 #!/usr/bin/python3
 # ==============================================================
-# viewpoint systhesis with planeJoints
+# viewpoint systhesis with planeJoints and continuous
 # ==============================================================
 import numpy as np
-import sys
 import scipy.misc
 from sklearn.decomposition import PCA
 import triangle
 import scipy.ndimage
 
+import sys
 sys.path.append('/home/andy/Documents/gitHub/DashCam_python/module')  # use the module under 'module'
 import file_process
 import dashcam_parse
@@ -18,23 +18,27 @@ import base_process
 
 
 sleIndex = 3
-createSV = True
 createSFM = False
+createSV = True
 needAlign = True
 needMatchInfo3d = True
 needGround = False
 addPlane = False
 planeJoints = False
 needVisual = True
+needPerspective = False
 imageSynthesis = True
-needTexture = True
+needTexture = False
 mapType = '_trajectory'  # [_info3d, _trajectory]
-randomPos = [0, 10, 0]
-randomDeg = 0
+offsetPos = [0.2569, 7.7, 0]
+offsetDeg = 0
 texture_height, texture_width = 256.0, 512.0
 
 # Create dashCamFileProcess and load 50 top Dashcam
 dashCamFileProcess = file_process.DashCamFileProcessor()
+#for yo in range(0, 10):
+#    offsetPos = [0.367 + yo*(0.616 - 0.367)/10, 11.0 + yo*(18.0 - 11.0)/10.0, 0]
+#    print(offsetPos)
 """
 Process the select file
 """
@@ -44,8 +48,8 @@ for fileIndex in range(sleIndex, sleIndex+1):
     """
     Create the sfm point cloud
     """
-    sfm3DRegion = dashcam_parse.SFM3DRegion(fileID)
     if createSFM:
+        sfm3DRegion = dashcam_parse.SFM3DRegion(fileID)
         programSFM3DRegion = glumpy_setting.ProgramSFM3DRegion(data=sfm3DRegion.ptcloudData, name='ProgramSFM3DRegion',
                                                                point_size=1, matrix=sfm3DRegion.matrix)
         programTrajectory = glumpy_setting.ProgramTrajectory(data=sfm3DRegion.trajectoryData, name='programTrajectory',
@@ -65,7 +69,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
     sv3DRegion.init_region(anchor=anchor)
     if createSV:
         sv3DRegion.create_topoloy()
-        sv3DRegion.create_region_time(start=8, end=9)
+        sv3DRegion.create_region_time(start=8, end=11)
         # sv3DRegion.create_region()
         pano_length = len(sv3DRegion.panoramaList)
         anchor_inv = np.linalg.inv(sv3DRegion.anchorMatrix)
@@ -86,7 +90,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
                 pano_ori = np.dot(zero_vec, sv3D.matrix_local)
                 pano_ori = np.dot(pano_ori, anchor_inv)
                 pano_ori_set[i] = pano_ori[:3]
-                dis_vec = (pano_ori[:3]) - randomPos
+                dis_vec = (pano_ori[:3]) - offsetPos
                 dis_len_set[i] = np.linalg.norm(dis_vec)
                 if i == (pano_length-1):
                     nearest_pano_idx = np.argmin(dis_len_set)
@@ -105,6 +109,75 @@ for fileIndex in range(sleIndex, sleIndex+1):
                 data = np.concatenate((data, sv3D.ptCLoudData[np.nonzero(sv3D.non_con)]), axis=0)
                 dataGnd = np.concatenate((data, sv3D.ptCLoudData[np.nonzero(sv3D.gnd_con)]), axis=0)
 
+            if needPerspective:
+                ori_pano = sv3D.panorama / 255.0
+                pano_height, pano_width = ori_pano.shape[0], ori_pano.shape[1]  # Actually, this must be 1:2
+                perspective_height, perspective_width = int(pano_height/4), int(pano_width/4)
+                perspective_90_set = []
+                #randomDeg = - sv3D.yaw
+                for degree in range(0, 360, 90):
+                    perspective_90 = np.zeros((perspective_height, perspective_width, 3))
+                    for p_y in range(0, perspective_height):
+                        for p_x in range(0, perspective_width):
+                            x = p_x - perspective_width/2
+                            z = -p_y + perspective_height/2
+                            y = perspective_height
+                            lng, lat = base_process.pos_2_deg(x, y, z)
+
+                            lng = (lng + degree + offsetDeg) % 360
+                            img_x = lng / 360.0 * pano_width
+                            img_y = -(lat - 90) / 180.0 * pano_height
+
+                            img_pos0_x = np.floor(img_x)
+                            img_pos0_y = np.floor(img_y)
+
+                            img_pos_diff_x = img_x - img_pos0_x
+                            img_pos_diff_y = img_y - img_pos0_y
+
+                            img_pos1_x = img_pos0_x + 1
+                            img_pos1_y = img_pos0_y
+
+                            img_pos2_x = img_pos0_x
+                            img_pos2_y = img_pos0_y + 1
+
+                            img_pos3_x = img_pos0_x + 1
+                            img_pos3_y = img_pos0_y + 1
+
+                            if img_pos1_x == pano_width:
+                                img_pos1_x = pano_width - 1
+                            if img_pos3_x == pano_width:
+                                img_pos3_x = pano_width - 1
+                            if img_pos2_y == pano_height:
+                                img_pos2_y = pano_height - 1
+                            if img_pos3_y == pano_height:
+                                img_pos3_y = pano_height - 1
+
+                            img_ratio0 = (1-img_pos_diff_x) * (1-img_pos_diff_y)
+                            img_ratio1 = img_pos_diff_x * (1-img_pos_diff_y)
+                            img_ratio2 = (1-img_pos_diff_x) * img_pos_diff_y
+                            img_ratio3 = img_pos_diff_x * img_pos_diff_y
+
+                            img_color0 = ori_pano[img_pos0_y, img_pos0_x, :]
+                            img_color1 = ori_pano[img_pos1_y, img_pos1_x, :]
+                            img_color2 = ori_pano[img_pos2_y, img_pos2_x, :]
+                            img_color3 = ori_pano[img_pos3_y, img_pos3_x, :]
+
+                            img_color = img_ratio0*img_color0 + img_ratio1*img_color1 + \
+                                        img_ratio2*img_color2 + img_ratio3*img_color3
+
+
+                            perspective_90[p_y, p_x, :] = img_color
+
+                    scipy.misc.imsave(sv3D.panoMeta['panoId'] + '_' + str(degree) + '.png', perspective_90)
+                    #scipy.misc.imshow(perspective_90)
+                    perspective_90_set.append(perspective_90)
+                    #break
+
+                #perspective_90_visual_0 = np.hstack(
+                #    (perspective_90_set[3], perspective_90_set[0], perspective_90_set[1], perspective_90_set[2]))
+                #perspective_90_visual = np.vstack((ori_pano, perspective_90_visual_0))
+                #scipy.misc.imshow(perspective_90_visual)
+
             if imageSynthesis and i == nearest_pano_idx:
                 # Visualize which panorama is the closet
                 if needVisual:
@@ -112,7 +185,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
                     dataNearest['a_color'] = [0, 1, 0]
                     dataNearest['a_color'][nearest_pano_idx] = [1, 1, 0]
                     dataNearest['a_position'][0:-1] = pano_ori_set
-                    dataNearest['a_position'][-1] = randomPos
+                    dataNearest['a_position'][-1] = offsetPos
                     dataNearest['a_color'][-1] = [1, 0, 0]
                 # Calculate synthesis view
                 syn_pano = np.zeros((texture_height, texture_width, 3), dtype=np.float32)
@@ -149,7 +222,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
                     for point in sel:
                         if np.isnan(point['a_position']).any():
                             continue
-                        x, y, z = point['a_position'] - np.array(randomPos)
+                        x, y, z = point['a_position'] - np.array(offsetPos)
                         if needTexture:
                             if x < 0 and y < 0:
                                 phase3 = True
@@ -161,7 +234,7 @@ for fileIndex in range(sleIndex, sleIndex+1):
                                     crossPhase = True
                         lng, lat = base_process.pos_2_deg(x, y, z)
 
-                        lng = (lng + randomDeg) % 360
+                        lng = (lng + offsetDeg) % 360
                         img_x = int(lng / 360.0 * texture_width)
                         img_y = int(-(lat - 90) / 180.0 * texture_height)
                         syn_pano[img_y, img_x, :] = point['a_color']
