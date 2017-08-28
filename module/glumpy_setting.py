@@ -356,6 +356,96 @@ class GpyViewWindow:
         app.run()
 
 
+class GpyViewWindowMulti:
+    def __init__(self, width=512, height=256):
+        window = app.Window(width=width, height=height,
+                            color=(0.0, 0.0, 0.0, 1.00))
+        framebuffer = np.zeros((window.height, window.width * 3), dtype=np.uint8)
+        self.programMulti, self.programIdx = [], 0
+        self.first = True  # Why this need self?
+
+        @window.event
+        def on_draw(dt):
+            for programSingle_idx, programSingle in enumerate(self.programMulti):
+                print(programSingle_idx)
+                window.clear()
+                for program_object in programSingle:
+                    program = program_object.program
+                    if program_object.draw_mode == gl.GL_TRIANGLES:
+                        program.draw(program_object.draw_mode, program_object.tri)
+
+                gl.glReadPixels(0, 0, window.width, window.height,
+                                gl.GL_RGB, gl.GL_UNSIGNED_BYTE, framebuffer)
+                my_texture = np.reshape(framebuffer, (window.height, window.width, 3))
+                # Some unknown reason
+                # The buffer didn't match what I see in the window
+                my_texture = np.flipud(my_texture)
+                scipy.misc.imsave('{:d}_{:d}.png'.format(self.programIdx, programSingle_idx), my_texture)
+            window.close()
+
+        @window.event
+        def on_resize(width, height):
+            pass
+
+        @window.event
+        def on_init():
+            gl.glEnable(gl.GL_DEPTH_TEST)
+
+    def set_program(self, program):
+        self.programMulti = program
+
+    def set_idx(self, idx):
+        self.programIdx = idx
+
+    @staticmethod
+    def run():
+        app.run()
+
+
+class GpyViewWindowSingle:
+    def __init__(self, width=512, height=256):
+        window = app.Window(width=width, height=height,
+                            color=(0.0, 0.0, 0.0, 1.00))
+        framebuffer = np.zeros((window.height, window.width * 3), dtype=np.uint8)
+        self.programSingle, self.programIdx1, self.programIdx2 = [], 0, 0
+        self.first = True  # Why this need self?
+
+        @window.event
+        def on_draw(dt):
+            window.clear()
+            for program_object in self.programSingle:
+                program = program_object.program
+                if program_object.draw_mode == gl.GL_TRIANGLES:
+                    program.draw(program_object.draw_mode, program_object.tri)
+
+            gl.glReadPixels(0, 0, window.width, window.height,
+                            gl.GL_RGB, gl.GL_UNSIGNED_BYTE, framebuffer)
+            my_texture = np.reshape(framebuffer, (window.height, window.width, 3))
+            # Some unknown reason
+            # The buffer didn't match what I see in the window
+            my_texture = np.flipud(my_texture)
+            scipy.misc.imsave('{:d}_{:d}.png'.format(self.programIdx1, self.programIdx2), my_texture)
+            # window.close()
+
+        @window.event
+        def on_resize(width, height):
+            pass
+
+        @window.event
+        def on_init():
+            gl.glEnable(gl.GL_DEPTH_TEST)
+
+    def set_program(self, program):
+        self.programSingle = program
+
+    def set_idx(self, idx1, idx2):
+        self.programIdx1, self.programIdx2 = idx1, idx2
+
+    @staticmethod
+    def run():
+        app.run()
+
+
 class GpyWindow:
     def __init__(self, window_width=1024, window_height=1024, degree=0):
         self.programs = []
@@ -492,11 +582,11 @@ class GpyWindow:
                         program_object.align_flip()
             elif symbol == 73:  # i --> inverse google according anchor
                 for program_object in self.programs:
-                    if program_object.name == 'ProgramSV3DRegion':
+                    if program_object.name == 'ProgramSV3DRegion' or program_object.name == 'programSV3DTopology':
                         program_object.apply_anchor_flip()
             elif symbol == 89:  # y --> rotate google according anchor yaw
                 for program_object in self.programs:
-                    if program_object.name == 'ProgramSV3DRegion':
+                    if program_object.name == 'ProgramSV3DRegion' or program_object.name == 'programSV3DTopology':
                         program_object.apply_yaw_flip()
             elif symbol == 80:  # p --> print scrren
                 gl.glReadPixels(0, 0, window.width, window.height,

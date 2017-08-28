@@ -10,7 +10,7 @@ import google_parse
 
 
 # Create PanoFetcher
-zoom, radius = 1, 10
+zoom, radius = 3, 10
 fileID = 'testttt'
 """
 # 1. use BFS
